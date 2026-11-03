@@ -65,12 +65,18 @@ export function AddDomainRow({ number }: { number: number }) {
 							className="font-mono text-sm"
 							aria-invalid={showError}
 						/>
-						<Button type="submit" size="sm" disabled={pending || !value.trim()}>
+						<Button
+							type="submit"
+							size="sm"
+							disabled={pending || !value.trim()}
+						>
 							Adaugă
 						</Button>
 					</div>
 					{showError && (
-						<p className="text-xs text-destructive">{state.error}</p>
+						<p className="text-xs text-destructive">
+							{state.error}
+						</p>
 					)}
 				</form>
 			</TableCell>

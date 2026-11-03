@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { listCaseTasks } from "@/lib/task-access";
 
 export async function notify(
 	caseId: string,
@@ -20,5 +21,52 @@ export async function notify(
 		});
 	} catch (e) {
 		console.error("NOTIFY:", e);
+	}
+}
+
+// După aprobarea ANR: fiecare ISP din proces primește propria notificare
+// și propriul eveniment „notificat” (capătul de sus al ramurii din istoric).
+export async function notifyIspTasks(c: {
+	id: string;
+	number: number;
+	processInstanceId: string | null;
+}) {
+	try {
+		const tasks = await listCaseTasks(c.processInstanceId);
+		const users = [
+			...new Set(
+				tasks
+					.filter((t) => t.taskDefinitionKey === "ispTask")
+					.map((t) => t.assignee ?? t.candidateUser)
+					.filter((v): v is string => Boolean(v)),
+			),
+		];
+
+		if (users.length === 0) {
+			await notify(
+				c.id,
+				`Caz #${c.number}: așteaptă blocarea de către ISP`,
+				{
+					groups: ["isp"],
+				},
+			);
+			return;
+		}
+
+		await prisma.caseComment.createMany({
+			data: users.map((userId) => ({
+				caseId: c.id,
+				userId,
+				stage: "isp",
+				decision: "notificat",
+			})),
+		});
+		await notify(
+			c.id,
+			`Sarcină nouă: blocarea domeniilor din cazul #${c.number}`,
+			{ users },
+		);
+	} catch (e) {
+		console.error("NOTIFY ISP:", e);
 	}
 }

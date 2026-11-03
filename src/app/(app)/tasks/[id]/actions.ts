@@ -10,7 +10,7 @@ import {
 } from "@/lib/constants";
 import { requireUser } from "@/lib/current-user";
 import { flowable } from "@/lib/flowable";
-import { notify } from "@/lib/notify";
+import { notify, notifyIspTasks } from "@/lib/notify";
 import { prisma } from "@/lib/prisma";
 import { type FlowTask, getTaskForUser } from "@/lib/task-access";
 
@@ -73,6 +73,11 @@ export async function decide(
 			}),
 		]);
 		return { error: "Decizia nu a putut fi trimisă" };
+	}
+
+	if (stage === "anr" && decision === "da") {
+		await notifyIspTasks(c);
+		redirect("/tasks?ok=decision");
 	}
 
 	const message =
@@ -260,7 +265,10 @@ export async function releaseTask(
 				userId: task.assignee,
 				stage,
 				decision: "eliberat",
-				text: task.assignee !== user.id ? "Eliberată de administrator" : null,
+				text:
+					task.assignee !== user.id
+						? "Eliberată de administrator"
+						: null,
 			},
 		})
 		.catch((e) => console.error("RELEASE EVENT:", e));

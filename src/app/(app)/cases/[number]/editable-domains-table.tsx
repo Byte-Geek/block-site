@@ -50,7 +50,9 @@ export default function EditableDomainsTable({
 
 	const needle = q.toLowerCase();
 	const filtered = withProblems.filter(
-		(r) => (!needle || r.value.includes(needle)) && (!onlyInvalid || r.problem),
+		(r) =>
+			(!needle || r.value.includes(needle)) &&
+			(!onlyInvalid || r.problem),
 	);
 	const total = filtered.length;
 	const pages = Math.max(1, Math.ceil(total / size));

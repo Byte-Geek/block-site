@@ -4,13 +4,13 @@ import { notFound, redirect } from "next/navigation";
 import CaseStepper from "@/components/case-stepper";
 import DomainsTable from "@/components/domains-table";
 import FlashToast from "@/components/flash-toast";
+import IspStatusCard, { type IspItem } from "@/components/isp-status-card";
 import { PageHeader, PageShell } from "@/components/page-shell";
-import {
-	IspStatusBadge,
-	ispTones,
-	StageBadge,
-} from "@/components/status-badge";
-import Timeline, { type TimelineEvent } from "@/components/timeline";
+import { ispTones, Pill, StageBadge } from "@/components/status-badge";
+import Timeline, {
+	type TimelineBranch,
+	type TimelineEvent,
+} from "@/components/timeline";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -20,7 +20,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { caseAccess } from "@/lib/case-access";
-import { ispStatusLabels } from "@/lib/constants";
+import { finalIspStatuses, ispStatusLabels } from "@/lib/constants";
 import { requireUser } from "@/lib/current-user";
 import { domainProblem } from "@/lib/domains";
 import { formatDateTime } from "@/lib/format";
@@ -65,17 +65,8 @@ export default async function CasePage({ params, searchParams }: Props) {
 	const c = await prisma.case.findFirst({
 		where: { AND: [access.where, { number: n }] },
 		include: {
-			comments:
-				access.group === "isp"
-					? {
-							where: {
-								OR: [{ stage: { not: "isp" } }, { userId: user.id }],
-							},
-						}
-					: true,
-			ispResponses: {
-				where: access.group === "isp" ? { userId: user.id } : {},
-			},
+			comments: true,
+			ispResponses: true,
 			_count: { select: { domains: true } },
 		},
 	});
@@ -91,7 +82,8 @@ export default async function CasePage({ params, searchParams }: Props) {
 		access.group === "initiator" &&
 		(c.stage === "draft" || c.stage === "initiator");
 	const isAdmin = user.role === "admin";
-	const showTasks = isAdmin || access.group === "asp" || access.group === "anr";
+	const showTasks =
+		isAdmin || access.group === "asp" || access.group === "anr";
 	const caseTasks = showTasks ? await listCaseTasks(c.processInstanceId) : [];
 
 	const ids = [
@@ -99,7 +91,9 @@ export default async function CasePage({ params, searchParams }: Props) {
 		...c.comments.map((x) => x.userId),
 		...c.ispResponses.map((x) => x.userId),
 		...caseTasks.flatMap((t) =>
-			[t.assignee, t.candidateUser].filter((v): v is string => Boolean(v)),
+			[t.assignee, t.candidateUser].filter((v): v is string =>
+				Boolean(v),
+			),
 		),
 	];
 
@@ -145,7 +139,9 @@ export default async function CasePage({ params, searchParams }: Props) {
 	const rejection = awaitingFix
 		? [...c.comments]
 				.filter((x) => x.decision === "nu")
-				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+				.sort(
+					(a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+				)[0]
 		: null;
 
 	const allRows = isEditable
@@ -183,89 +179,80 @@ export default async function CasePage({ params, searchParams }: Props) {
 						tone: "primary",
 					} satisfies TimelineEvent,
 				]),
-		...c.comments.map((x): TimelineEvent => {
-			const role =
-				x.stage === "initiator"
-					? "Inițiator"
-					: x.stage === "asp"
-						? "ASP"
-						: x.stage === "anr"
-							? "ANRCETI"
-							: "ISP";
+		...c.comments
+			.filter((x) => x.stage !== "isp")
+			.map((x): TimelineEvent => {
+				const role =
+					x.stage === "initiator"
+						? "Inițiator"
+						: x.stage === "asp"
+							? "ASP"
+							: x.stage === "anr"
+								? "ANRCETI"
+								: "ISP";
 
-			if (x.decision === "trimis")
-				return {
-					id: x.id,
-					at: x.createdAt,
-					title: "Inițiatorul a trimis lista",
-					who: nameOf(x.userId),
-					role,
-					note: x.text,
-					tone: "primary",
-				};
-			if (x.decision === "anulat")
-				return {
-					id: x.id,
-					at: x.createdAt,
-					title: "Inițiatorul a anulat cazul",
-					who: nameOf(x.userId),
-					role,
-					note: x.text,
-					tone: "slate",
-				};
-			if (x.decision === "retrimis")
-				return {
-					id: x.id,
-					at: x.createdAt,
-					title: "Inițiatorul a retrimis lista",
-					who: nameOf(x.userId),
-					role,
-					note: x.text,
-					tone: "amber",
-				};
-			if (x.decision === "preluat")
-				return {
-					id: x.id,
-					at: x.createdAt,
-					title: `${role} a preluat cazul`,
-					who: nameOf(x.userId),
-					role,
-					note: x.text,
-					tone: "slate",
-				};
-			if (x.decision === "eliberat")
-				return {
-					id: x.id,
-					at: x.createdAt,
-					title: `${role} a eliberat cazul`,
-					who: nameOf(x.userId),
-					role,
-					note: x.text,
-					tone: "slate",
-				};
+				if (x.decision === "trimis")
+					return {
+						id: x.id,
+						at: x.createdAt,
+						title: "Inițiatorul a trimis lista",
+						who: nameOf(x.userId),
+						role,
+						note: x.text,
+						tone: "primary",
+					};
+				if (x.decision === "anulat")
+					return {
+						id: x.id,
+						at: x.createdAt,
+						title: "Inițiatorul a anulat cazul",
+						who: nameOf(x.userId),
+						role,
+						note: x.text,
+						tone: "slate",
+					};
+				if (x.decision === "retrimis")
+					return {
+						id: x.id,
+						at: x.createdAt,
+						title: "Inițiatorul a retrimis lista",
+						who: nameOf(x.userId),
+						role,
+						note: x.text,
+						tone: "amber",
+					};
+				if (x.decision === "preluat")
+					return {
+						id: x.id,
+						at: x.createdAt,
+						title: `${role} a preluat cazul`,
+						who: nameOf(x.userId),
+						role,
+						note: x.text,
+						tone: "slate",
+					};
+				if (x.decision === "eliberat")
+					return {
+						id: x.id,
+						at: x.createdAt,
+						title: `${role} a eliberat cazul`,
+						who: nameOf(x.userId),
+						role,
+						note: x.text,
+						tone: "slate",
+					};
 
-			const approved = x.decision === "da";
-			return {
-				id: x.id,
-				at: x.createdAt,
-				title: `${role} a ${approved ? "aprobat" : "respins"} lista`,
-				who: nameOf(x.userId),
-				role,
-				note: x.text,
-				tone: approved ? "green" : "red",
-			};
-		}),
-		...c.ispResponses.map(
-			(x): TimelineEvent => ({
-				id: x.id,
-				at: x.createdAt,
-				title: `ISP: ${ispStatusLabels[x.status] ?? x.status}`,
-				who: nameOf(x.userId),
-				role: "ISP",
-				note: x.reason,
-				tone: ispTones[x.status] ?? "slate",
+				const approved = x.decision === "da";
+				return {
+					id: x.id,
+					at: x.createdAt,
+					title: `${role} a ${approved ? "aprobat" : "respins"} lista`,
+					who: nameOf(x.userId),
+					role,
+					note: x.text,
+					tone: approved ? "green" : "red",
+				};
 			}),
-		),
 	].sort((a, b) => a.at.getTime() - b.at.getTime());
 
 	const latestByIsp = new Map<string, (typeof c.ispResponses)[number]>();
@@ -273,7 +260,108 @@ export default async function CasePage({ params, searchParams }: Props) {
 		(a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
 	))
 		latestByIsp.set(r.userId, r);
-	const ispLatest = [...latestByIsp.values()];
+
+	const ispIds = [
+		...new Set([
+			...c.comments.filter((x) => x.stage === "isp").map((x) => x.userId),
+			...c.ispResponses.map((x) => x.userId),
+			...caseTasks
+				.filter((t) => t.taskDefinitionKey === "ispTask")
+				.flatMap((t) => [t.assignee, t.candidateUser])
+				.filter((v): v is string => Boolean(v)),
+		]),
+	].sort((a, b) => nameOf(a).localeCompare(nameOf(b), "ro"));
+
+	const ispItems: IspItem[] = ispIds.map((uid) => {
+		const last = latestByIsp.get(uid);
+		const claim = c.comments
+			.filter(
+				(x) =>
+					x.stage === "isp" &&
+					x.userId === uid &&
+					(x.decision === "preluat" || x.decision === "eliberat"),
+			)
+			.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+
+		if (last)
+			return {
+				id: uid,
+				name: nameOf(uid),
+				label: ispStatusLabels[last.status] ?? last.status,
+				tone: ispTones[last.status] ?? "slate",
+				done: finalIspStatuses.includes(last.status),
+			};
+		if (claim?.decision === "preluat")
+			return {
+				id: uid,
+				name: nameOf(uid),
+				label: "Preluat",
+				tone: "blue",
+				done: false,
+			};
+		return {
+			id: uid,
+			name: nameOf(uid),
+			label: "În așteptare",
+			tone: "amber",
+			done: false,
+		};
+	});
+
+	const ispEventTitles: Record<string, string> = {
+		notificat: "Sarcină creată, ISP notificat",
+		preluat: "A preluat sarcina",
+		eliberat: "A eliberat sarcina",
+	};
+
+	const branches: TimelineBranch[] = ispItems.map((item) => {
+		const events: TimelineEvent[] = [
+			...c.comments
+				.filter((x) => x.stage === "isp" && x.userId === item.id)
+				.map(
+					(x): TimelineEvent => ({
+						id: x.id,
+						at: x.createdAt,
+						title: ispEventTitles[x.decision] ?? x.decision,
+						who: item.name,
+						role: "ISP",
+						note: x.text,
+						tone: x.decision === "notificat" ? "blue" : "slate",
+					}),
+				),
+			...c.ispResponses
+				.filter((x) => x.userId === item.id)
+				.map(
+					(x): TimelineEvent => ({
+						id: x.id,
+						at: x.createdAt,
+						title: `Stare: ${ispStatusLabels[x.status] ?? x.status}`,
+						who: item.name,
+						role: "ISP",
+						note: x.reason,
+						tone: ispTones[x.status] ?? "slate",
+					}),
+				),
+		].sort((a, b) => a.at.getTime() - b.at.getTime());
+
+		return {
+			id: item.id,
+			name: item.name,
+			badge: <Pill tone={item.tone}>{item.label}</Pill>,
+			events,
+		};
+	});
+
+	const historyCard = !isDraft && (
+		<Card>
+			<CardHeader>
+				<CardTitle>Istoric</CardTitle>
+			</CardHeader>
+			<CardContent>
+				<Timeline events={events} branches={branches} />
+			</CardContent>
+		</Card>
+	);
 
 	return (
 		<PageShell>
@@ -281,7 +369,12 @@ export default async function CasePage({ params, searchParams }: Props) {
 
 			<PageHeader
 				back={
-					<Button asChild variant="ghost" size="sm" className="-ml-2 w-fit">
+					<Button
+						asChild
+						variant="ghost"
+						size="sm"
+						className="-ml-2 w-fit"
+					>
 						<Link href="/cases">
 							<ChevronLeft />
 							Cazuri
@@ -305,11 +398,15 @@ export default async function CasePage({ params, searchParams }: Props) {
 								? "Ai o sarcină deschisă pe acest caz"
 								: "O sarcină liberă așteaptă pe acest caz"}
 						</p>
-						<p className="text-sm text-muted-foreground">{openTask.name}</p>
+						<p className="text-sm text-muted-foreground">
+							{openTask.name}
+						</p>
 					</div>
 					<Button asChild>
 						<Link href={`/tasks/${openTask.id}`}>
-							{openTask.mine ? "Deschide sarcina" : "Vezi și preia"}
+							{openTask.mine
+								? "Deschide sarcina"
+								: "Vezi și preia"}
 							<ArrowRight />
 						</Link>
 					</Button>
@@ -321,17 +418,23 @@ export default async function CasePage({ params, searchParams }: Props) {
 					<CardHeader>
 						<CardTitle>Lista trebuie corectată</CardTitle>
 						<CardDescription>
-							Corectează domeniile direct în tabel, apoi retrimite lista. Poți
-							și să o înlocuiești cu un fișier nou sau să anulezi cazul.
+							Corectează domeniile direct în tabel, apoi retrimite
+							lista. Poți și să o înlocuiești cu un fișier nou sau
+							să anulezi cazul.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="flex flex-col gap-4">
 						{rejection && (
 							<div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
 								<p className="font-medium text-destructive">
-									Respins de {rejection.stage === "asp" ? "ASP" : "ANRCETI"}
+									Respins de{" "}
+									{rejection.stage === "asp"
+										? "ASP"
+										: "ANRCETI"}
 								</p>
-								{rejection.text && <p className="mt-1">{rejection.text}</p>}
+								{rejection.text && (
+									<p className="mt-1">{rejection.text}</p>
+								)}
 								<p className="mt-1 text-xs text-muted-foreground">
 									{formatDateTime(rejection.createdAt)}
 								</p>
@@ -351,8 +454,9 @@ export default async function CasePage({ params, searchParams }: Props) {
 					<CardHeader>
 						<CardTitle>Ciornă, încă netrimisă</CardTitle>
 						<CardDescription>
-							Verifică lista, apoi trimite-o la validarea ASP. Ciorna o vezi
-							doar tu și o poți șterge oricând până o trimiți.
+							Verifică lista, apoi trimite-o la validarea ASP.
+							Ciorna o vezi doar tu și o poți șterge oricând până
+							o trimiți.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -369,8 +473,8 @@ export default async function CasePage({ params, searchParams }: Props) {
 				(c.stage === "cancelled" ? (
 					<Card>
 						<CardContent className="text-sm text-muted-foreground">
-							Cazul a fost anulat de inițiator. Procesul s-a oprit, iar lista nu
-							mai poate fi modificată.
+							Cazul a fost anulat de inițiator. Procesul s-a
+							oprit, iar lista nu mai poate fi modificată.
 						</CardContent>
 					</Card>
 				) : (
@@ -414,15 +518,25 @@ export default async function CasePage({ params, searchParams }: Props) {
 						<CardContent>
 							<dl className="grid gap-3 text-sm">
 								<div className="flex justify-between gap-4">
-									<dt className="text-muted-foreground">Inițiator</dt>
-									<dd className="font-medium">{nameOf(c.createdById)}</dd>
+									<dt className="shrink-0 text-muted-foreground">
+										Inițiator
+									</dt>
+									<dd className="min-w-0 text-right font-medium break-words">
+										{nameOf(c.createdById)}
+									</dd>
 								</div>
 								<div className="flex justify-between gap-4">
-									<dt className="text-muted-foreground">Fișier</dt>
-									<dd className="truncate font-medium">{c.fileName}</dd>
+									<dt className="shrink-0 text-muted-foreground">
+										Fișier
+									</dt>
+									<dd className="min-w-0 text-right font-medium break-all">
+										{c.fileName}
+									</dd>
 								</div>
 								<div className="flex justify-between gap-4">
-									<dt className="text-muted-foreground">Domenii</dt>
+									<dt className="shrink-0 text-muted-foreground">
+										Domenii
+									</dt>
 									<dd className="font-medium tabular-nums">
 										{c._count.domains}
 									</dd>
@@ -435,39 +549,18 @@ export default async function CasePage({ params, searchParams }: Props) {
 						<CaseTasksCard rows={taskRows} canRelease={isAdmin} />
 					)}
 
-					{ispLatest.length > 0 && (
-						<Card>
-							<CardHeader>
-								<CardTitle>Starea ISP-urilor</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<ul className="flex flex-col gap-3">
-									{ispLatest.map((r) => (
-										<li
-											key={r.userId}
-											className="flex items-center justify-between gap-3 text-sm"
-										>
-											<span className="truncate">{nameOf(r.userId)}</span>
-											<IspStatusBadge status={r.status} />
-										</li>
-									))}
-								</ul>
-							</CardContent>
-						</Card>
+					{ispItems.length > 0 && (
+						<IspStatusCard
+							items={ispItems}
+							closed={c.stage === "closed"}
+						/>
 					)}
 
-					{!isDraft && (
-						<Card>
-							<CardHeader>
-								<CardTitle>Istoric</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<Timeline events={events} />
-							</CardContent>
-						</Card>
-					)}
+					{!branches.length && historyCard}
 				</div>
 			</div>
+
+			{branches.length > 0 && historyCard}
 		</PageShell>
 	);
 }

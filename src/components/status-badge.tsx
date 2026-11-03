@@ -34,9 +34,12 @@ export const ispTones: Record<string, Tone> = {
 	impossible: "red",
 };
 
-function Pill({ tone, children }: { tone: Tone; children: ReactNode }) {
+export function Pill({ tone, children }: { tone: Tone; children: ReactNode }) {
 	return (
-		<Badge variant="outline" className={cn("border-transparent", tones[tone])}>
+		<Badge
+			variant="outline"
+			className={cn("border-transparent", tones[tone])}
+		>
 			<span className="size-1.5 rounded-full bg-current" />
 			{children}
 		</Badge>
