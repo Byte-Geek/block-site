@@ -1,0 +1,177 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  role          String?
+  banned        Boolean?  @default(false)
+  banReason     String?
+  banExpires    DateTime?
+  sessions      Session[]
+  accounts      Account[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id             String   @id
+  expiresAt      DateTime
+  token          String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  impersonatedBy String?
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+
+model Group {
+  id        String       @id @default(cuid())
+  key       String       @unique
+  name      String
+  createdAt DateTime     @default(now())
+  members   Membership[]
+
+  @@map("groups")
+}
+
+model Membership {
+  userId   String @id
+  groupKey String
+  group    Group  @relation(fields: [groupKey], references: [key])
+
+  @@map("memberships")
+}
+
+model ProcessVersion {
+  id           String   @id @default(cuid())
+  xml          String
+  deploymentId String
+  createdAt    DateTime @default(now())
+
+  @@map("process_versions")
+}
+
+model Case {
+  id          String       @id @default(cuid())
+  number      Int          @unique @default(autoincrement())
+  fileName    String
+  createdById String
+  createdAt   DateTime     @default(now())
+  stage String @default("asp")
+  domains     CaseDomain[]
+  comments    CaseComment[]
+  ispResponses IspResponse[]
+  notifications Notification[]
+  processInstanceId String?      @unique
+
+  @@map("cases")
+}
+
+model CaseDomain {
+  id       String @id @default(cuid())
+  caseId   String
+  position Int
+  value    String
+  case     Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, value])
+  @@index([caseId])
+  @@map("case_domains")
+}
+
+model CaseComment {
+  id        String   @id @default(cuid())
+  caseId    String
+  userId    String
+  stage     String
+  decision  String
+  text      String?
+  createdAt DateTime @default(now())
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@map("case_comments")
+}
+
+model IspResponse {
+  id        String   @id @default(cuid())
+  caseId    String
+  userId    String
+  status    String
+  reason    String?
+  createdAt DateTime @default(now())
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, userId])
+  @@map("isp_responses")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  caseId    String
+  text      String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  case      Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}

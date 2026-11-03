@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://blocare-site-uri">
+
+  <process id="blocareSiteuri" name="Blocare site-uri" isExecutable="true">
+
+    <startEvent id="start"/>
+    <sequenceFlow id="f1" sourceRef="start" targetRef="trimitere"/>
+
+    <userTask id="trimitere" name="Trimitere listă" flowable:candidateGroups="initiator"/>
+    <sequenceFlow id="f2" sourceRef="trimitere" targetRef="aspTask"/>
+
+    <userTask id="aspTask" name="Validare ASP" flowable:candidateGroups="asp"/>
+    <sequenceFlow id="f3" sourceRef="aspTask" targetRef="aspDecizie"/>
+
+    <exclusiveGateway id="aspDecizie"/>
+    <sequenceFlow id="f4" sourceRef="aspDecizie" targetRef="anrTask">
+      <conditionExpression xsi:type="tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${aspAprobat == 'da'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f5" sourceRef="aspDecizie" targetRef="trimitere">
+      <conditionExpression xsi:type="tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${aspAprobat == 'nu'}</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="anrTask" name="Validare ANRCETI" flowable:candidateGroups="anr"/>
+    <sequenceFlow id="f6" sourceRef="anrTask" targetRef="anrDecizie"/>
+
+    <exclusiveGateway id="anrDecizie"/>
+    <sequenceFlow id="f7" sourceRef="anrDecizie" targetRef="ispTask">
+      <conditionExpression xsi:type="tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${anrAprobat == 'da'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f8" sourceRef="anrDecizie" targetRef="aspTask">
+      <conditionExpression xsi:type="tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${anrAprobat == 'nu'}</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="ispTask" name="Blocare ISP" flowable:candidateUsers="${ispUser.asText()}">
+      <multiInstanceLoopCharacteristics isSequential="false"
+          flowable:collection="ispUsers" flowable:elementVariable="ispUser"/>
+    </userTask>
+    <sequenceFlow id="f9" sourceRef="ispTask" targetRef="end"/>
+
+<endEvent id="end"/>
+  </process>
+</definitions>
