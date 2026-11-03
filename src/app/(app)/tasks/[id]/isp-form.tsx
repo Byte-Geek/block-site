@@ -18,7 +18,6 @@ import {
 	finalIspStatuses,
 	ispStatuses,
 	ispStatusLabels,
-	needsReasonStatuses,
 } from "@/lib/constants";
 import { setIspStatus } from "./actions";
 
@@ -26,14 +25,13 @@ type Props = { taskId: string; initialStatus: string };
 
 export default function IspForm({ taskId, initialStatus }: Props) {
 	const [state, action, pending] = useActionState(setIspStatus, {});
-	const [status, setStatus] = useState(initialStatus);
+	const [status, setStatus] = useState(
+		finalIspStatuses.includes(initialStatus) ? "queued" : initialStatus,
+	);
 
 	useEffect(() => {
 		if (state.ok) toast.success(state.ok);
 	}, [state]);
-
-	const isFinal = finalIspStatuses.includes(status);
-	const needsReason = needsReasonStatuses.includes(status);
 
 	return (
 		<form action={action} className="flex flex-col gap-4">
@@ -46,25 +44,19 @@ export default function IspForm({ taskId, initialStatus }: Props) {
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
-						{ispStatuses.map((s) => (
-							<SelectItem key={s} value={s}>
-								{ispStatusLabels[s]}
-								{finalIspStatuses.includes(s) ? " (final)" : ""}
-							</SelectItem>
-						))}
+						{ispStatuses
+							.filter((s) => !finalIspStatuses.includes(s))
+							.map((s) => (
+								<SelectItem key={s} value={s}>
+									{ispStatusLabels[s]}
+								</SelectItem>
+							))}
 					</SelectContent>
 				</Select>
-				{isFinal && (
-					<p className="text-xs text-muted-foreground">
-						Stare finală: sarcina se închide după trimitere.
-					</p>
-				)}
 			</div>
 
 			<div className="grid gap-2">
-				<Label htmlFor="isp-reason">
-					Motiv tehnic{needsReason ? " (obligatoriu)" : ""}
-				</Label>
+				<Label htmlFor="isp-reason">Notă (opțional)</Label>
 				<Textarea id="isp-reason" name="reason" rows={3} />
 			</div>
 
@@ -72,7 +64,7 @@ export default function IspForm({ taskId, initialStatus }: Props) {
 
 			<Button type="submit" disabled={pending}>
 				{pending && <LoaderCircle className="animate-spin" />}
-				Trimite
+				Salvează starea
 			</Button>
 		</form>
 	);

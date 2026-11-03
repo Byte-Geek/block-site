@@ -1,6 +1,7 @@
 import { ArrowRight, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import CaseReport, { type IspFailures } from "@/components/case-report";
 import CaseStepper from "@/components/case-stepper";
 import DomainsTable from "@/components/domains-table";
 import FlashToast from "@/components/flash-toast";
@@ -23,6 +24,7 @@ import { caseAccess } from "@/lib/case-access";
 import { finalIspStatuses, ispStatusLabels } from "@/lib/constants";
 import { requireUser } from "@/lib/current-user";
 import { domainProblem } from "@/lib/domains";
+import { findDuplicates, groupDuplicates } from "@/lib/duplicates";
 import { formatDateTime } from "@/lib/format";
 import { pageSizeFrom } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
@@ -151,7 +153,22 @@ export default async function CasePage({ params, searchParams }: Props) {
 				select: { id: true, position: true, value: true },
 			})
 		: [];
-	const invalidCount = allRows.filter((r) => domainProblem(r.value)).length;
+	const dupMap = isEditable
+		? groupDuplicates(await findDuplicates(c.id))
+		: new Map();
+	const duplicates = Object.fromEntries(
+		[...dupMap].map(([value, list]) => [
+			value,
+			list.map((d) => ({
+				number: d.number,
+				stage: d.stage,
+				own: d.createdById === user.id,
+			})),
+		]),
+	);
+	const invalidCount = allRows.filter(
+		(r) => domainProblem(r.value) || dupMap.has(r.value),
+	).length;
 
 	const flashDetail =
 		[
@@ -307,6 +324,47 @@ export default async function CasePage({ params, searchParams }: Props) {
 			done: false,
 		};
 	});
+
+	const report =
+		c.stage === "closed" && ispItems.length > 0
+			? await (async () => {
+					const failed = await prisma.ispDomainResult.findMany({
+						where: { caseId: c.id, blocked: false },
+						orderBy: { domain: { position: "asc" } },
+						select: {
+							id: true,
+							userId: true,
+							reason: true,
+							domain: { select: { value: true } },
+						},
+					});
+					const reporting = await prisma.ispDomainResult.groupBy({
+						by: ["userId"],
+						where: { caseId: c.id },
+					});
+					// Cazurile închise înainte de bifarea pe domenii nu au date.
+					if (reporting.length < ispItems.length) return null;
+
+					const failedIds = new Set(
+						failed.map((f) => f.domain.value),
+					);
+					const failures: IspFailures[] = ispItems.map((i) => ({
+						id: i.id,
+						name: i.name,
+						rows: failed
+							.filter((f) => f.userId === i.id)
+							.map((f) => ({
+								id: f.id,
+								value: f.domain.value,
+								reason: f.reason,
+							})),
+					}));
+					return {
+						blockedByAll: c._count.domains - failedIds.size,
+						failures,
+					};
+				})()
+			: null;
 
 	const ispEventTitles: Record<string, string> = {
 		notificat: "Sarcină creată, ISP notificat",
@@ -491,6 +549,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 						<EditableDomainsTable
 							number={c.number}
 							rows={allRows}
+							duplicates={duplicates}
 							q={q}
 							page={Number(page) || 1}
 							size={size}
@@ -521,7 +580,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 									<dt className="shrink-0 text-muted-foreground">
 										Inițiator
 									</dt>
-									<dd className="min-w-0 text-right font-medium break-words">
+									<dd className="min-w-0 text-right font-medium wrap-break-word">
 										{nameOf(c.createdById)}
 									</dd>
 								</div>
@@ -559,6 +618,15 @@ export default async function CasePage({ params, searchParams }: Props) {
 					{!branches.length && historyCard}
 				</div>
 			</div>
+
+			{report && (
+				<CaseReport
+					total={c._count.domains}
+					blockedByAll={report.blockedByAll}
+					ispCount={ispItems.length}
+					failures={report.failures}
+				/>
+			)}
 
 			{branches.length > 0 && historyCard}
 		</PageShell>

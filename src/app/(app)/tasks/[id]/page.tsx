@@ -20,6 +20,8 @@ import { prisma } from "@/lib/prisma";
 import { getTaskForUser } from "@/lib/task-access";
 import ClaimBar from "./claim-bar";
 import DecisionForm from "./decision-form";
+import { IspDomainControl, IspSelectAll } from "./isp-domain-controls";
+import IspFinish from "./isp-finish";
 import IspForm from "./isp-form";
 
 type Props = {
@@ -64,11 +66,41 @@ export default async function TaskPage({ params, searchParams }: Props) {
 				})
 			: null;
 
+	const isIspWorking = mine && user.group === "isp";
+	const mineWhere = { caseId: c.id, userId: user.id };
+	const results = isIspWorking
+		? await prisma.ispDomainResult.findMany({
+				where: {
+					...mineWhere,
+					domainId: { in: domains.map((d) => d.id) },
+				},
+			})
+		: [];
+	const totalDomains = isIspWorking
+		? await prisma.caseDomain.count({ where: { caseId: c.id } })
+		: 0;
+	const blockedCount = isIspWorking
+		? await prisma.ispDomainResult.count({
+				where: { ...mineWhere, blocked: true },
+			})
+		: 0;
+	const reasonCount = isIspWorking
+		? await prisma.ispDomainResult.count({
+				where: { ...mineWhere, blocked: false },
+			})
+		: 0;
+	const byDomain = new Map(results.map((r) => [r.domainId, r]));
+
 	return (
 		<PageShell>
 			<PageHeader
 				back={
-					<Button asChild variant="ghost" size="sm" className="-ml-2 w-fit">
+					<Button
+						asChild
+						variant="ghost"
+						size="sm"
+						className="-ml-2 w-fit"
+					>
 						<Link href="/tasks">
 							<ChevronLeft />
 							Sarcini
@@ -97,6 +129,39 @@ export default async function TaskPage({ params, searchParams }: Props) {
 						size={size}
 						q={q}
 						basePath={`/tasks/${id}`}
+						extra={
+							isIspWorking
+								? {
+										head: (
+											<IspSelectAll
+												taskId={task.id}
+												allBlocked={
+													blockedCount ===
+													totalDomains
+												}
+											/>
+										),
+										cells: Object.fromEntries(
+											domains.map((d) => [
+												d.id,
+												<IspDomainControl
+													key={d.id}
+													taskId={task.id}
+													domainId={d.id}
+													blocked={
+														byDomain.get(d.id)
+															?.blocked ?? false
+													}
+													reason={
+														byDomain.get(d.id)
+															?.reason ?? null
+													}
+												/>,
+											]),
+										),
+									}
+								: undefined
+						}
 					/>
 				</div>
 
@@ -110,8 +175,8 @@ export default async function TaskPage({ params, searchParams }: Props) {
 							<CardHeader>
 								<CardTitle>Decizie</CardTitle>
 								<CardDescription>
-									Verifică lista și aprobă sau respinge. La respingere,
-									comentariul este obligatoriu.
+									Verifică lista și aprobă sau respinge. La
+									respingere, comentariul este obligatoriu.
 								</CardDescription>
 							</CardHeader>
 							<CardContent>
@@ -128,15 +193,26 @@ export default async function TaskPage({ params, searchParams }: Props) {
 							<CardHeader>
 								<CardTitle>Starea blocării</CardTitle>
 								<CardDescription>
-									Actualizează starea pe măsură ce avansezi. Stările finale
-									închid sarcina.
+									Marchează fiecare domeniu în tabel. Când
+									toate au bifă sau cauză, finalizezi sarcina.
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="flex flex-col gap-4">
 								<div className="flex items-center justify-between text-sm">
-									<span className="text-muted-foreground">Starea curentă</span>
-									<IspStatusBadge status={last?.status ?? null} />
+									<span className="text-muted-foreground">
+										Starea curentă
+									</span>
+									<IspStatusBadge
+										status={last?.status ?? null}
+									/>
 								</div>
+								<Separator />
+								<IspFinish
+									taskId={task.id}
+									total={totalDomains}
+									blocked={blockedCount}
+									withReason={reasonCount}
+								/>
 								<Separator />
 								<IspForm
 									taskId={task.id}

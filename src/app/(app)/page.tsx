@@ -10,6 +10,7 @@ import {
 	UsersRound,
 } from "lucide-react";
 import Link from "next/link";
+import DomainSearch from "@/components/domain-search";
 import { PageHeader, PageShell } from "@/components/page-shell";
 import StatCard from "@/components/stat-card";
 import { StageBadge } from "@/components/status-badge";
@@ -42,7 +43,12 @@ const availableHint: Record<string, string> = {
 	isp: "Noi, încă nepreluate",
 };
 
-export default async function HomePage() {
+export default async function HomePage({
+	searchParams,
+}: {
+	searchParams: Promise<{ d?: string }>;
+}) {
+	const { d = "" } = await searchParams;
 	const user = await requireUser();
 	const isAdmin = user.role === "admin";
 	const access = caseAccess(user);
@@ -60,10 +66,17 @@ export default async function HomePage() {
 
 	const isInitiator = access.group === "initiator";
 	if (isInitiator)
-		return <InitiatorDashboard userId={user.id} name={user.name} />;
+		return (
+			<InitiatorDashboard
+				userId={user.id}
+				name={user.name}
+				d={d}
+				user={user}
+			/>
+		);
 
-	const [stageCounts, recent, tasks, unread, users, groups] = await Promise.all(
-		[
+	const [stageCounts, recent, tasks, unread, users, groups] =
+		await Promise.all([
 			prisma.case.groupBy({
 				by: ["stage"],
 				where: access.where,
@@ -88,8 +101,7 @@ export default async function HomePage() {
 					}),
 			isAdmin ? prisma.user.count() : null,
 			isAdmin ? prisma.group.count() : null,
-		],
-	);
+		]);
 
 	const countOf = (s: string) =>
 		stageCounts.find((x) => x.stage === s)?._count._all ?? 0;
@@ -170,7 +182,9 @@ export default async function HomePage() {
 						label: "Disponibile",
 						value: availableCount,
 						icon: HandHelping,
-						hint: access.group ? availableHint[access.group] : undefined,
+						hint: access.group
+							? availableHint[access.group]
+							: undefined,
 					},
 					{
 						href: "/cases",
@@ -209,6 +223,8 @@ export default async function HomePage() {
 				}
 			/>
 
+			<DomainSearch d={d} user={user} />
+
 			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 				{cards.map((card) => (
 					<StatCard key={card.href} {...card} />
@@ -238,7 +254,9 @@ export default async function HomePage() {
 							<TableHeader>
 								<TableRow>
 									<TableHead>Caz</TableHead>
-									<TableHead className="hidden md:table-cell">Fișier</TableHead>
+									<TableHead className="hidden md:table-cell">
+										Fișier
+									</TableHead>
 									<TableHead>Etapă</TableHead>
 									<TableHead className="hidden md:table-cell">
 										Încărcat

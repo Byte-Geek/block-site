@@ -25,6 +25,7 @@ model User {
   cases         Case[]
   comments      CaseComment[]
   ispResponses  IspResponse[]
+  ispResults    IspDomainResult[]
   notifications Notification[]
 
   @@unique([email])
@@ -120,6 +121,7 @@ model Case {
   domains           CaseDomain[]
   comments          CaseComment[]
   ispResponses      IspResponse[]
+  ispResults        IspDomainResult[]
   notifications     Notification[]
 
   @@index([createdById])
@@ -133,9 +135,11 @@ model CaseDomain {
   position Int
   value    String
   case     Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  ispResults IspDomainResult[]
 
   @@unique([caseId, value])
   @@index([caseId])
+  @@index([value])
   @@map("case_domains")
 }
 
@@ -166,6 +170,23 @@ model IspResponse {
 
   @@index([caseId, userId])
   @@map("isp_responses")
+}
+
+model IspDomainResult {
+  id        String     @id @default(cuid())
+  caseId    String
+  userId    String
+  domainId  String
+  blocked   Boolean
+  reason    String?
+  createdAt DateTime   @default(now())
+  case      Case       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id])
+  domain    CaseDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, domainId])
+  @@index([caseId, userId])
+  @@map("isp_domain_results")
 }
 
 model Notification {

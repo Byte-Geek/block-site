@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, ListPlus, Pencil, Plus, X } from "lucide-react";
+import Link from "next/link";
 import { startTransition, useActionState, useRef, useState } from "react";
 import { toast } from "sonner";
 import DeleteDialog from "@/components/delete-dialog";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { stageLabels } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {
 	addDomain,
@@ -89,6 +91,7 @@ type Row = {
 	position: number;
 	value: string;
 	problem: string | null;
+	dups: { number: number; stage: string; own: boolean }[];
 };
 
 export function DomainRow({ number, row }: { number: number; row: Row }) {
@@ -120,9 +123,10 @@ export function DomainRow({ number, row }: { number: number; row: Row }) {
 	}
 
 	const showError = Boolean(state.error) && submitted === value;
+	const bad = Boolean(row.problem) || row.dups.length > 0;
 
 	return (
-		<TableRow className={cn(row.problem && "bg-destructive/5")}>
+		<TableRow className={cn(bad && "bg-destructive/5")}>
 			<TableCell className="text-muted-foreground tabular-nums">
 				{row.position}
 			</TableCell>
@@ -154,7 +158,7 @@ export function DomainRow({ number, row }: { number: number; row: Row }) {
 						<span
 							className={cn(
 								"font-mono text-sm break-all",
-								row.problem && "text-destructive",
+								bad && "text-destructive",
 							)}
 						>
 							{row.value}
@@ -164,6 +168,27 @@ export function DomainRow({ number, row }: { number: number; row: Row }) {
 								{row.problem}
 							</span>
 						)}
+						{row.dups.map((d) => (
+							<span
+								key={d.number}
+								className="text-xs text-destructive"
+							>
+								Există deja în cazul{" "}
+								{d.own ? (
+									<Link
+										href={`/cases/${d.number}`}
+										className="font-medium underline"
+									>
+										#{d.number}
+									</Link>
+								) : (
+									<span className="font-medium">
+										#{d.number}
+									</span>
+								)}{" "}
+								({stageLabels[d.stage] ?? d.stage})
+							</span>
+						))}
 					</div>
 				)}
 			</TableCell>
@@ -235,7 +260,7 @@ export function BulkAddDialog({ number }: { number: number }) {
 				name="text"
 				rows={10}
 				placeholder={"exemplu.md\nalt-exemplu.com"}
-				className="font-mono text-sm"
+				className="field-sizing-fixed h-64 resize-none overflow-y-auto font-mono text-sm"
 				required
 			/>
 		</FormDialog>

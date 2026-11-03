@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import Form from "next/form";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import Pagination from "@/components/pagination";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +30,7 @@ type Props = {
 	size: number;
 	q: string;
 	basePath: string;
+	extra?: { head: ReactNode; cells: Record<string, ReactNode> };
 };
 
 export default function DomainsTable({
@@ -39,6 +41,7 @@ export default function DomainsTable({
 	size,
 	q,
 	basePath,
+	extra,
 }: Props) {
 	const pages = Math.max(1, Math.ceil(total / size));
 
@@ -63,7 +66,10 @@ export default function DomainsTable({
 								: `${allTotal} domenii în listă`}
 						</CardDescription>
 					</div>
-					<Form action={basePath} className="flex w-full gap-2 sm:w-80">
+					<Form
+						action={basePath}
+						className="flex w-full gap-2 sm:w-80"
+					>
 						{size !== DEFAULT_PAGE_SIZE && (
 							<input type="hidden" name="size" value={size} />
 						)}
@@ -97,21 +103,28 @@ export default function DomainsTable({
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">
 				<div className="overflow-hidden rounded-lg border">
-					<Table>
+					<Table className="table-fixed">
 						<TableHeader>
 							<TableRow>
 								<TableHead className="w-20">Nr.</TableHead>
 								<TableHead>Domeniu</TableHead>
+								{extra && (
+									<TableHead className="w-80">
+										{extra.head}
+									</TableHead>
+								)}
 							</TableRow>
 						</TableHeader>
 						<TableBody>
 							{domains.length === 0 ? (
 								<TableRow>
 									<TableCell
-										colSpan={2}
+										colSpan={extra ? 3 : 2}
 										className="h-24 text-center text-muted-foreground"
 									>
-										{q ? `Niciun domeniu pentru „${q}”` : "Lista este goală"}
+										{q
+											? `Niciun domeniu pentru „${q}”`
+											: "Lista este goală"}
 									</TableCell>
 								</TableRow>
 							) : (
@@ -120,9 +133,14 @@ export default function DomainsTable({
 										<TableCell className="text-muted-foreground tabular-nums">
 											{d.position}
 										</TableCell>
-										<TableCell className="font-mono text-sm">
+										<TableCell className="font-mono text-sm break-all whitespace-normal">
 											{d.value}
 										</TableCell>
+										{extra && (
+											<TableCell className="whitespace-normal">
+												{extra.cells[d.id]}
+											</TableCell>
+										)}
 									</TableRow>
 								))
 							)}

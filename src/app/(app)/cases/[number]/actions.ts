@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { domainProblem, parseDomains } from "@/lib/domains";
+import { findDuplicates } from "@/lib/duplicates";
 import { flowable } from "@/lib/flowable";
 import { notify } from "@/lib/notify";
 import { prisma } from "@/lib/prisma";
@@ -21,7 +22,11 @@ async function countInvalid(caseId: string) {
 		where: { caseId },
 		select: { value: true },
 	});
-	return all.filter((d) => domainProblem(d.value)).length;
+	const bad = new Set(
+		all.filter((d) => domainProblem(d.value)).map((d) => d.value),
+	);
+	for (const d of await findDuplicates(caseId)) bad.add(d.value);
+	return bad.size;
 }
 
 export async function sendDraft(
@@ -45,7 +50,7 @@ export async function sendDraft(
 	const invalid = await countInvalid(c.id);
 	if (invalid > 0)
 		return {
-			error: `${invalid} domenii au probleme. Corectează-le sau șterge-le înainte să trimiți.`,
+			error: `${invalid} domenii au probleme (invalide sau existente deja în alte cazuri). Corectează-le sau șterge-le înainte să trimiți.`,
 		};
 
 	const ispMembers = await prisma.membership.findMany({
@@ -109,8 +114,7 @@ export async function sendDraft(
 			})
 			.catch(() => {});
 		return {
-			error:
-				"Procesul nu a putut fi pornit. Ciorna a rămas salvată, încearcă din nou.",
+			error: "Procesul nu a putut fi pornit. Ciorna a rămas salvată, încearcă din nou.",
 		};
 	}
 
@@ -163,7 +167,7 @@ export async function resubmitCase(
 	const invalid = await countInvalid(c.id);
 	if (invalid > 0)
 		return {
-			error: `${invalid} domenii au probleme. Corectează-le sau șterge-le înainte să retrimiți.`,
+			error: `${invalid} domenii au probleme (invalide sau existente deja în alte cazuri). Corectează-le sau șterge-le înainte să retrimiți.`,
 		};
 
 	const task = await findInitiatorTask(c.processInstanceId).catch(() => null);
@@ -177,9 +181,13 @@ export async function resubmitCase(
 	if (claimed.count === 0) return { error: "Cazul a fost deja retrimis" };
 
 	try {
-		await flowable(`/runtime/tasks/${encodeURIComponent(task.id)}`, "POST", {
-			action: "complete",
-		});
+		await flowable(
+			`/runtime/tasks/${encodeURIComponent(task.id)}`,
+			"POST",
+			{
+				action: "complete",
+			},
+		);
 	} catch (e) {
 		console.error("RETRIMITERE:", e);
 		await prisma.case

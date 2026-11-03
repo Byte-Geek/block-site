@@ -23,9 +23,12 @@ import { domainProblem } from "@/lib/domains";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from "@/lib/pagination";
 import { AddDomainRow, BulkAddDialog, DomainRow } from "./domain-controls";
 
+export type DupInfo = { number: number; stage: string; own: boolean };
+
 type Props = {
 	number: number;
 	rows: { id: string; position: number; value: string }[];
+	duplicates: Record<string, DupInfo[]>;
 	q: string;
 	page: number;
 	size: number;
@@ -36,6 +39,7 @@ type Props = {
 export default function EditableDomainsTable({
 	number,
 	rows,
+	duplicates,
 	q,
 	page,
 	size,
@@ -45,14 +49,17 @@ export default function EditableDomainsTable({
 	const withProblems = rows.map((r) => ({
 		...r,
 		problem: domainProblem(r.value),
+		dups: duplicates[r.value] ?? [],
 	}));
-	const invalidCount = withProblems.filter((r) => r.problem).length;
+	const isBad = (r: { problem: string | null; dups: DupInfo[] }) =>
+		Boolean(r.problem) || r.dups.length > 0;
+	const invalidCount = withProblems.filter(isBad).length;
+	const dupCount = withProblems.filter((r) => r.dups.length > 0).length;
 
 	const needle = q.toLowerCase();
 	const filtered = withProblems.filter(
 		(r) =>
-			(!needle || r.value.includes(needle)) &&
-			(!onlyInvalid || r.problem),
+			(!needle || r.value.includes(needle)) && (!onlyInvalid || isBad(r)),
 	);
 	const total = filtered.length;
 	const pages = Math.max(1, Math.ceil(total / size));
@@ -121,6 +128,8 @@ export default function EditableDomainsTable({
 							{invalidCount === 1
 								? "Un domeniu are probleme și este marcat cu roșu."
 								: `${invalidCount} domenii au probleme și sunt marcate cu roșu.`}{" "}
+							{dupCount > 0 &&
+								`${dupCount === 1 ? "Unul există" : `${dupCount} există`} deja în alte cazuri. `}
 							Corectează-le sau șterge-le înainte să trimiți.
 						</p>
 						<Button asChild size="sm" variant="outline">

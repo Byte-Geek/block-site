@@ -7,6 +7,7 @@ import {
 	TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
+import DomainSearch from "@/components/domain-search";
 import { PageHeader, PageShell } from "@/components/page-shell";
 import StatCard from "@/components/stat-card";
 import { StageBadge } from "@/components/status-badge";
@@ -22,9 +23,19 @@ import {
 import { formatDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
-type Props = { userId: string; name: string };
+type Props = {
+	userId: string;
+	name: string;
+	d: string;
+	user: Parameters<typeof DomainSearch>[0]["user"];
+};
 
-export default async function InitiatorDashboard({ userId, name }: Props) {
+export default async function InitiatorDashboard({
+	userId,
+	name,
+	d,
+	user,
+}: Props) {
 	const where = { createdById: userId };
 
 	const [stageCounts, rejected, recent, drafts, unread] = await Promise.all([
@@ -72,16 +83,20 @@ export default async function InitiatorDashboard({ userId, name }: Props) {
 				description="Încarcă liste noi și urmărește cazurile tale."
 			/>
 
+			<DomainSearch d={d} user={user} />
+
 			<div className="flex flex-col gap-4 rounded-xl border bg-linear-to-br from-primary/10 via-primary/5 to-transparent p-6 sm:flex-row sm:items-center sm:justify-between">
 				<div className="flex items-start gap-4">
 					<div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
 						<FilePlus2 className="size-5" />
 					</div>
 					<div>
-						<h2 className="text-lg font-semibold">Începe un caz nou</h2>
+						<h2 className="text-lg font-semibold">
+							Începe un caz nou
+						</h2>
 						<p className="text-sm text-muted-foreground">
-							Încarcă lista de domenii pentru blocare. Cazul pornește automat la
-							validarea ASP.
+							Încarcă lista de domenii pentru blocare. Cazul
+							pornește automat la validarea ASP.
 						</p>
 					</div>
 				</div>
@@ -196,7 +211,9 @@ export default async function InitiatorDashboard({ userId, name }: Props) {
 
 			<section className="flex flex-col gap-3">
 				<div className="flex items-center justify-between">
-					<h2 className="text-lg font-semibold">Cazurile mele recente</h2>
+					<h2 className="text-lg font-semibold">
+						Cazurile mele recente
+					</h2>
 					{recent.length > 0 && (
 						<Button asChild variant="ghost" size="sm">
 							<Link href="/cases">
@@ -217,7 +234,9 @@ export default async function InitiatorDashboard({ userId, name }: Props) {
 							<TableHeader>
 								<TableRow>
 									<TableHead>Caz</TableHead>
-									<TableHead className="hidden md:table-cell">Fișier</TableHead>
+									<TableHead className="hidden md:table-cell">
+										Fișier
+									</TableHead>
 									<TableHead>Etapă</TableHead>
 									<TableHead className="hidden md:table-cell">
 										Încărcat
