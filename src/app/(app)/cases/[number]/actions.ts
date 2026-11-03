@@ -8,6 +8,7 @@ import { flowable } from "@/lib/flowable";
 import { notify } from "@/lib/notify";
 import { prisma } from "@/lib/prisma";
 import { requireGroup } from "@/lib/require-group";
+import { deleteFiles, storeFile } from "@/lib/storage";
 import { findInitiatorTask } from "@/lib/task-access";
 
 type State = { error?: string; details?: string[] };
@@ -135,11 +136,16 @@ export async function cancelDraft(
 	const number = parseNumber(formData.get("number"));
 	if (!number) return { error: "Caz invalid" };
 
+	const files = await prisma.caseFile.findMany({
+		where: { case: { number, createdById: user.id, stage: "draft" } },
+		select: { key: true },
+	});
 	const result = await prisma.case.deleteMany({
 		where: { number, createdById: user.id, stage: "draft" },
 	});
 	if (result.count === 0)
 		return { error: "Doar o ciornă proprie poate fi anulată" };
+	await deleteFiles(files.map((f) => f.key));
 
 	revalidatePath("/cases");
 	redirect("/cases?ok=cancelled");
@@ -239,23 +245,53 @@ export async function replaceFromFile(
 		return { error: parsed.error, details: parsed.details };
 	const { domains, removedDuplicates, column } = parsed;
 
-	await prisma.$transaction(
-		async (tx) => {
-			await tx.caseDomain.deleteMany({ where: { caseId: c.id } });
-			await tx.caseDomain.createMany({
-				data: domains.map((value, i) => ({
-					caseId: c.id,
-					position: i + 1,
-					value,
-				})),
-			});
-			await tx.case.update({
-				where: { id: c.id },
-				data: { fileName: file.name },
-			});
-		},
-		{ timeout: 60000 },
-	);
+	const stored = await storeFile(file);
+	if ("error" in stored) return { error: stored.error };
+
+	// În ciornă, fișierul nou îl înlocuiește pe cel vechi. După respingere,
+	// fișierele vechi rămân în istoric.
+	let oldKeys: string[] = [];
+	try {
+		await prisma.$transaction(
+			async (tx) => {
+				if (c.stage === "draft") {
+					const old = await tx.caseFile.findMany({
+						where: { caseId: c.id, kind: "list" },
+						select: { key: true },
+					});
+					oldKeys = old.map((f) => f.key);
+					await tx.caseFile.deleteMany({
+						where: { caseId: c.id, kind: "list" },
+					});
+				}
+				await tx.caseDomain.deleteMany({ where: { caseId: c.id } });
+				await tx.caseDomain.createMany({
+					data: domains.map((value, i) => ({
+						caseId: c.id,
+						position: i + 1,
+						value,
+					})),
+				});
+				await tx.case.update({
+					where: { id: c.id },
+					data: { fileName: file.name },
+				});
+				await tx.caseFile.create({
+					data: {
+						...stored.data,
+						caseId: c.id,
+						userId: user.id,
+						kind: "list",
+					},
+				});
+			},
+			{ timeout: 60000 },
+		);
+	} catch (e) {
+		await deleteFiles([stored.data.key]);
+		throw e;
+	}
+	await deleteFiles(oldKeys);
 
 	revalidatePath(`/cases/${c.number}`);
 	redirect(

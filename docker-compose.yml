@@ -39,6 +39,33 @@ services:
       FLOWABLE_REST_APP_ADMIN_USER-ID: rest-admin
       FLOWABLE_REST_APP_ADMIN_PASSWORD: test
 
+  rustfs-perms:
+    image: alpine
+    user: root
+    volumes:
+      - rustfs-data:/data
+    command: chown -R 10001:10001 /data
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: blocare-rustfs
+    depends_on:
+      rustfs-perms:
+        condition: service_completed_successfully
+    environment:
+      RUSTFS_ACCESS_KEY: blocare-admin
+      RUSTFS_SECRET_KEY: blocare-secret-2026
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - rustfs-data:/data
+
 volumes:
   platform-data:
   flowable-data:
+  rustfs-data:

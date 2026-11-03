@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import CaseReport, { type IspFailures } from "@/components/case-report";
 import CaseStepper from "@/components/case-stepper";
+import CaseTabs, { type CaseTab } from "@/components/case-tabs";
 import DomainsTable from "@/components/domains-table";
 import FlashToast from "@/components/flash-toast";
 import IspStatusCard, { type IspItem } from "@/components/isp-status-card";
@@ -32,6 +33,8 @@ import { findOpenTask, listCaseTasks } from "@/lib/task-access";
 import CaseTasksCard from "./case-tasks-card";
 import DraftActions from "./draft-actions";
 import EditableDomainsTable from "./editable-domains-table";
+import FilesTab from "./files-tab";
+import NotesTab from "./notes-tab";
 import RejectedActions from "./rejected-actions";
 
 type Props = {
@@ -44,6 +47,7 @@ type Props = {
 		problems?: string;
 		dup?: string;
 		col?: string;
+		tab?: string;
 	}>;
 };
 
@@ -58,7 +62,14 @@ export default async function CasePage({ params, searchParams }: Props) {
 		problems,
 		dup,
 		col,
+		tab: tabParam,
 	} = await searchParams;
+	const tab: CaseTab =
+		tabParam === "raport" ||
+		tabParam === "comentarii" ||
+		tabParam === "fisiere"
+			? tabParam
+			: "descriere";
 
 	const user = await requireUser();
 	const access = caseAccess(user);
@@ -69,7 +80,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 		include: {
 			comments: true,
 			ispResponses: true,
-			_count: { select: { domains: true } },
+			_count: { select: { domains: true, notes: true, files: true } },
 		},
 	});
 	if (!c) notFound();
@@ -88,8 +99,25 @@ export default async function CasePage({ params, searchParams }: Props) {
 		isAdmin || access.group === "asp" || access.group === "anr";
 	const caseTasks = showTasks ? await listCaseTasks(c.processInstanceId) : [];
 
+	const notes =
+		tab === "comentarii"
+			? await prisma.caseNote.findMany({
+					where: { caseId: c.id },
+					orderBy: { createdAt: "asc" },
+				})
+			: [];
+	const files =
+		tab === "fisiere"
+			? await prisma.caseFile.findMany({
+					where: { caseId: c.id },
+					orderBy: { createdAt: "asc" },
+				})
+			: [];
+
 	const ids = [
 		c.createdById,
+		...notes.map((x) => x.userId),
+		...files.map((x) => x.userId),
 		...c.comments.map((x) => x.userId),
 		...c.ispResponses.map((x) => x.userId),
 		...caseTasks.flatMap((t) =>
@@ -366,6 +394,13 @@ export default async function CasePage({ params, searchParams }: Props) {
 				})()
 			: null;
 
+	const activeTab: CaseTab =
+		tab === "raport" && !report
+			? "descriere"
+			: !tabParam && report
+				? "raport"
+				: tab;
+
 	const ispEventTitles: Record<string, string> = {
 		notificat: "Sarcină creată, ISP notificat",
 		preluat: "A preluat sarcina",
@@ -471,155 +506,17 @@ export default async function CasePage({ params, searchParams }: Props) {
 				</div>
 			)}
 
-			{awaitingFix && (
-				<Card className="border-amber-300 bg-amber-50/50">
-					<CardHeader>
-						<CardTitle>Lista trebuie corectată</CardTitle>
-						<CardDescription>
-							Corectează domeniile direct în tabel, apoi retrimite
-							lista. Poți și să o înlocuiești cu un fișier nou sau
-							să anulezi cazul.
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="flex flex-col gap-4">
-						{rejection && (
-							<div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-								<p className="font-medium text-destructive">
-									Respins de{" "}
-									{rejection.stage === "asp"
-										? "ASP"
-										: "ANRCETI"}
-								</p>
-								{rejection.text && (
-									<p className="mt-1">{rejection.text}</p>
-								)}
-								<p className="mt-1 text-xs text-muted-foreground">
-									{formatDateTime(rejection.createdAt)}
-								</p>
-							</div>
-						)}
-						<RejectedActions
-							number={c.number}
-							domainCount={c._count.domains}
-							invalidCount={invalidCount}
-						/>
-					</CardContent>
-				</Card>
-			)}
+			<CaseTabs
+				basePath={`/cases/${c.number}`}
+				active={activeTab}
+				hasReport={Boolean(report)}
+				counts={{
+					comentarii: c._count.notes,
+					fisiere: c._count.files,
+				}}
+			/>
 
-			{isDraft && (
-				<Card className="border-primary/30 bg-primary/5">
-					<CardHeader>
-						<CardTitle>Ciornă, încă netrimisă</CardTitle>
-						<CardDescription>
-							Verifică lista, apoi trimite-o la validarea ASP.
-							Ciorna o vezi doar tu și o poți șterge oricând până
-							o trimiți.
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<DraftActions
-							number={c.number}
-							domainCount={c._count.domains}
-							invalidCount={invalidCount}
-						/>
-					</CardContent>
-				</Card>
-			)}
-
-			{!isDraft &&
-				(c.stage === "cancelled" ? (
-					<Card>
-						<CardContent className="text-sm text-muted-foreground">
-							Cazul a fost anulat de inițiator. Procesul s-a
-							oprit, iar lista nu mai poate fi modificată.
-						</CardContent>
-					</Card>
-				) : (
-					<Card>
-						<CardContent>
-							<CaseStepper stage={c.stage} />
-						</CardContent>
-					</Card>
-				))}
-
-			<div className="grid gap-6 lg:grid-cols-[1fr_22rem] lg:items-start">
-				<div className="min-w-0">
-					{isEditable ? (
-						<EditableDomainsTable
-							number={c.number}
-							rows={allRows}
-							duplicates={duplicates}
-							q={q}
-							page={Number(page) || 1}
-							size={size}
-							onlyInvalid={problems === "1"}
-							basePath={`/cases/${c.number}`}
-						/>
-					) : (
-						<DomainsTable
-							domains={domains}
-							total={total}
-							allTotal={allTotal}
-							page={current}
-							size={size}
-							q={q}
-							basePath={`/cases/${c.number}`}
-						/>
-					)}
-				</div>
-
-				<div className="order-first flex flex-col gap-6 lg:order-last">
-					<Card>
-						<CardHeader>
-							<CardTitle>Detalii</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<dl className="grid gap-3 text-sm">
-								<div className="flex justify-between gap-4">
-									<dt className="shrink-0 text-muted-foreground">
-										Inițiator
-									</dt>
-									<dd className="min-w-0 text-right font-medium wrap-break-word">
-										{nameOf(c.createdById)}
-									</dd>
-								</div>
-								<div className="flex justify-between gap-4">
-									<dt className="shrink-0 text-muted-foreground">
-										Fișier
-									</dt>
-									<dd className="min-w-0 text-right font-medium break-all">
-										{c.fileName}
-									</dd>
-								</div>
-								<div className="flex justify-between gap-4">
-									<dt className="shrink-0 text-muted-foreground">
-										Domenii
-									</dt>
-									<dd className="font-medium tabular-nums">
-										{c._count.domains}
-									</dd>
-								</div>
-							</dl>
-						</CardContent>
-					</Card>
-
-					{taskRows.length > 0 && (
-						<CaseTasksCard rows={taskRows} canRelease={isAdmin} />
-					)}
-
-					{ispItems.length > 0 && (
-						<IspStatusCard
-							items={ispItems}
-							closed={c.stage === "closed"}
-						/>
-					)}
-
-					{!branches.length && historyCard}
-				</div>
-			</div>
-
-			{report && (
+			{activeTab === "raport" && report && (
 				<CaseReport
 					total={c._count.domains}
 					blockedByAll={report.blockedByAll}
@@ -628,7 +525,185 @@ export default async function CasePage({ params, searchParams }: Props) {
 				/>
 			)}
 
-			{branches.length > 0 && historyCard}
+			{tab === "comentarii" && (
+				<NotesTab
+					number={c.number}
+					canWrite={c.stage !== "cancelled"}
+					notes={notes}
+					nameOf={nameOf}
+				/>
+			)}
+
+			{tab === "fisiere" && (
+				<FilesTab
+					number={c.number}
+					canWrite={c.stage !== "cancelled"}
+					files={files}
+					nameOf={nameOf}
+				/>
+			)}
+
+			{activeTab === "descriere" && (
+				<>
+					{awaitingFix && (
+						<Card className="border-amber-300 bg-amber-50/50">
+							<CardHeader>
+								<CardTitle>Lista trebuie corectată</CardTitle>
+								<CardDescription>
+									Corectează domeniile direct în tabel, apoi
+									retrimite lista. Poți și să o înlocuiești cu
+									un fișier nou sau să anulezi cazul.
+								</CardDescription>
+							</CardHeader>
+							<CardContent className="flex flex-col gap-4">
+								{rejection && (
+									<div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+										<p className="font-medium text-destructive">
+											Respins de{" "}
+											{rejection.stage === "asp"
+												? "ASP"
+												: "ANRCETI"}
+										</p>
+										{rejection.text && (
+											<p className="mt-1">
+												{rejection.text}
+											</p>
+										)}
+										<p className="mt-1 text-xs text-muted-foreground">
+											{formatDateTime(
+												rejection.createdAt,
+											)}
+										</p>
+									</div>
+								)}
+								<RejectedActions
+									number={c.number}
+									domainCount={c._count.domains}
+									invalidCount={invalidCount}
+								/>
+							</CardContent>
+						</Card>
+					)}
+
+					{isDraft && (
+						<Card className="border-primary/30 bg-primary/5">
+							<CardHeader>
+								<CardTitle>Ciornă, încă netrimisă</CardTitle>
+								<CardDescription>
+									Verifică lista, apoi trimite-o la validarea
+									ASP. Ciorna o vezi doar tu și o poți șterge
+									oricând până o trimiți.
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
+								<DraftActions
+									number={c.number}
+									domainCount={c._count.domains}
+									invalidCount={invalidCount}
+								/>
+							</CardContent>
+						</Card>
+					)}
+
+					{!isDraft &&
+						(c.stage === "cancelled" ? (
+							<Card>
+								<CardContent className="text-sm text-muted-foreground">
+									Cazul a fost anulat de inițiator. Procesul
+									s-a oprit, iar lista nu mai poate fi
+									modificată.
+								</CardContent>
+							</Card>
+						) : (
+							<Card>
+								<CardContent>
+									<CaseStepper stage={c.stage} />
+								</CardContent>
+							</Card>
+						))}
+
+					<div className="grid gap-6 lg:grid-cols-[1fr_22rem] lg:items-start">
+						<div className="min-w-0">
+							{isEditable ? (
+								<EditableDomainsTable
+									number={c.number}
+									rows={allRows}
+									duplicates={duplicates}
+									q={q}
+									page={Number(page) || 1}
+									size={size}
+									onlyInvalid={problems === "1"}
+									basePath={`/cases/${c.number}`}
+								/>
+							) : (
+								<DomainsTable
+									domains={domains}
+									total={total}
+									allTotal={allTotal}
+									page={current}
+									size={size}
+									q={q}
+									basePath={`/cases/${c.number}`}
+								/>
+							)}
+						</div>
+
+						<div className="order-first flex flex-col gap-6 lg:order-last">
+							<Card>
+								<CardHeader>
+									<CardTitle>Detalii</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<dl className="grid gap-3 text-sm">
+										<div className="flex justify-between gap-4">
+											<dt className="shrink-0 text-muted-foreground">
+												Inițiator
+											</dt>
+											<dd className="min-w-0 text-right font-medium wrap-break-word">
+												{nameOf(c.createdById)}
+											</dd>
+										</div>
+										<div className="flex justify-between gap-4">
+											<dt className="shrink-0 text-muted-foreground">
+												Fișier
+											</dt>
+											<dd className="min-w-0 text-right font-medium break-all">
+												{c.fileName}
+											</dd>
+										</div>
+										<div className="flex justify-between gap-4">
+											<dt className="shrink-0 text-muted-foreground">
+												Domenii
+											</dt>
+											<dd className="font-medium tabular-nums">
+												{c._count.domains}
+											</dd>
+										</div>
+									</dl>
+								</CardContent>
+							</Card>
+
+							{taskRows.length > 0 && (
+								<CaseTasksCard
+									rows={taskRows}
+									canRelease={isAdmin}
+								/>
+							)}
+
+							{ispItems.length > 0 && (
+								<IspStatusCard
+									items={ispItems}
+									closed={c.stage === "closed"}
+								/>
+							)}
+
+							{!branches.length && historyCard}
+						</div>
+					</div>
+
+					{branches.length > 0 && historyCard}
+				</>
+			)}
 		</PageShell>
 	);
 }

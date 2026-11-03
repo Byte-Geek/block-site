@@ -26,6 +26,8 @@ model User {
   comments      CaseComment[]
   ispResponses  IspResponse[]
   ispResults    IspDomainResult[]
+  notes         CaseNote[]
+  files         CaseFile[]
   notifications Notification[]
 
   @@unique([email])
@@ -122,6 +124,8 @@ model Case {
   comments          CaseComment[]
   ispResponses      IspResponse[]
   ispResults        IspDomainResult[]
+  notes             CaseNote[]
+  files             CaseFile[]
   notifications     Notification[]
 
   @@index([createdById])
@@ -187,6 +191,37 @@ model IspDomainResult {
   @@unique([userId, domainId])
   @@index([caseId, userId])
   @@map("isp_domain_results")
+}
+
+model CaseNote {
+  id        String   @id @default(cuid())
+  caseId    String
+  userId    String
+  text      String
+  createdAt DateTime @default(now())
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([caseId])
+  @@map("case_notes")
+}
+
+model CaseFile {
+  id          String   @id @default(cuid())
+  caseId      String
+  userId      String
+  name        String
+  note        String?
+  size        Int
+  contentType String
+  key         String   @unique
+  kind        String
+  createdAt   DateTime @default(now())
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([caseId])
+  @@map("case_files")
 }
 
 model Notification {

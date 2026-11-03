@@ -13,6 +13,7 @@
 		"db:generate": "prisma generate"
 	},
 	"dependencies": {
+		"@aws-sdk/client-s3": "^3.1161.0",
 		"@hookform/resolvers": "^6.0.2",
 		"@prisma/adapter-pg": "^7.10.1",
 		"@prisma/client": "^7.10.1",
