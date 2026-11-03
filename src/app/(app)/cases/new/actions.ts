@@ -1,9 +1,9 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
 import { parseDomains } from "@/lib/domains";
+import { prisma } from "@/lib/prisma";
 import { requireGroup } from "@/lib/require-group";
 
 type State = { error?: string; details?: string[] };

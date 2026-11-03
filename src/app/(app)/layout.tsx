@@ -1,12 +1,12 @@
-import { Suspense, type ReactNode } from "react";
 import { cookies } from "next/headers";
-import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/current-user";
+import { type ReactNode, Suspense } from "react";
 import AppHeader from "@/components/app-header";
 import AppSidebar from "@/components/app-sidebar";
-import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { requireUser } from "@/lib/current-user";
+import { prisma } from "@/lib/prisma";
 
 async function Shell({ children }: { children: ReactNode }) {
 	const user = await requireUser();

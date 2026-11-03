@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/prisma";
 import { flowable } from "@/lib/flowable";
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
 	await prisma.$queryRaw`SELECT 1`;

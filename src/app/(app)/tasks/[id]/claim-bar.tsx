@@ -1,9 +1,8 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
 import { HandHelping, LoaderCircle, UserCheck } from "lucide-react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
-import { claimTask, releaseTask } from "./actions";
 import { FormError } from "@/components/form-error";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +12,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { claimTask, releaseTask } from "./actions";
 
 type Props = { taskId: string; mine: boolean };
 

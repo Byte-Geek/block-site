@@ -2,10 +2,7 @@ name: blocare
 
 services:
   platform-db:
-    build:
-      dockerfile_inline: |
-        FROM postgres:17
-    image: blocare/platform-db:17
+    image: postgres:17
     container_name: blocare-platform-db
     environment:
       POSTGRES_USER: platform
@@ -17,10 +14,7 @@ services:
       - platform-data:/var/lib/postgresql/data
 
   flowable-db:
-    build:
-      dockerfile_inline: |
-        FROM postgres:17
-    image: blocare/flowable-db:17
+    image: postgres:17
     container_name: blocare-flowable-db
     environment:
       POSTGRES_USER: flowable
@@ -30,10 +24,7 @@ services:
       - flowable-data:/var/lib/postgresql/data
 
   flowable-rest:
-    build:
-      dockerfile_inline: |
-        FROM flowable/flowable-rest:8.0.0
-    image: blocare/flowable-rest:8.0.0
+    image: flowable/flowable-rest:8.0.0
     container_name: blocare-flowable-rest
     depends_on:
       - flowable-db

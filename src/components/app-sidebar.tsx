@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
 	Bell,
 	FilePlus2,
@@ -14,6 +12,8 @@ import {
 	UsersRound,
 	Workflow,
 } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
 	Sidebar,
 	SidebarContent,

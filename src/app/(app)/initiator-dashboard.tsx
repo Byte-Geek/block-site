@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
 	ArrowRight,
 	Bell,
@@ -7,8 +6,7 @@ import {
 	FolderOpen,
 	TriangleAlert,
 } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { formatDate } from "@/lib/format";
+import Link from "next/link";
 import { PageHeader, PageShell } from "@/components/page-shell";
 import StatCard from "@/components/stat-card";
 import { StageBadge } from "@/components/status-badge";
@@ -21,6 +19,8 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { formatDate } from "@/lib/format";
+import { prisma } from "@/lib/prisma";
 
 type Props = { userId: string; name: string };
 

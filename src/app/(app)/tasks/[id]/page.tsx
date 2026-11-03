@@ -1,11 +1,6 @@
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { formatDateTime } from "@/lib/format";
-import { requireUser } from "@/lib/current-user";
-import { pageSizeFrom } from "@/lib/pagination";
-import { getTaskForUser } from "@/lib/task-access";
 import DomainsTable from "@/components/domains-table";
 import { PageHeader, PageShell } from "@/components/page-shell";
 import { IspStatusBadge, StageBadge } from "@/components/status-badge";
@@ -18,6 +13,11 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { requireUser } from "@/lib/current-user";
+import { formatDateTime } from "@/lib/format";
+import { pageSizeFrom } from "@/lib/pagination";
+import { prisma } from "@/lib/prisma";
+import { getTaskForUser } from "@/lib/task-access";
 import ClaimBar from "./claim-bar";
 import DecisionForm from "./decision-form";
 import IspForm from "./isp-form";
@@ -68,12 +68,7 @@ export default async function TaskPage({ params, searchParams }: Props) {
 		<PageShell>
 			<PageHeader
 				back={
-					<Button
-						asChild
-						variant="ghost"
-						size="sm"
-						className="-ml-2 w-fit"
-					>
+					<Button asChild variant="ghost" size="sm" className="-ml-2 w-fit">
 						<Link href="/tasks">
 							<ChevronLeft />
 							Sarcini
@@ -115,8 +110,8 @@ export default async function TaskPage({ params, searchParams }: Props) {
 							<CardHeader>
 								<CardTitle>Decizie</CardTitle>
 								<CardDescription>
-									Verifică lista și aprobă sau respinge. La
-									respingere, comentariul este obligatoriu.
+									Verifică lista și aprobă sau respinge. La respingere,
+									comentariul este obligatoriu.
 								</CardDescription>
 							</CardHeader>
 							<CardContent>
@@ -133,18 +128,14 @@ export default async function TaskPage({ params, searchParams }: Props) {
 							<CardHeader>
 								<CardTitle>Starea blocării</CardTitle>
 								<CardDescription>
-									Actualizează starea pe măsură ce avansezi.
-									Stările finale închid sarcina.
+									Actualizează starea pe măsură ce avansezi. Stările finale
+									închid sarcina.
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="flex flex-col gap-4">
 								<div className="flex items-center justify-between text-sm">
-									<span className="text-muted-foreground">
-										Starea curentă
-									</span>
-									<IspStatusBadge
-										status={last?.status ?? null}
-									/>
+									<span className="text-muted-foreground">Starea curentă</span>
+									<IspStatusBadge status={last?.status ?? null} />
 								</div>
 								<Separator />
 								<IspForm

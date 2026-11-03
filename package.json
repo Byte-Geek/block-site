@@ -8,7 +8,9 @@
 		"start": "next start",
 		"lint": "biome check",
 		"format": "biome format --write",
-		"seed:admin": "tsx scripts/seed-admin.ts"
+		"seed:admin": "tsx scripts/seed-admin.ts",
+		"db:migrate": "prisma migrate dev",
+		"db:generate": "prisma generate"
 	},
 	"dependencies": {
 		"@hookform/resolvers": "^6.0.2",

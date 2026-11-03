@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
 	ArrowRight,
 	Bell,
@@ -10,11 +9,7 @@ import {
 	Users,
 	UsersRound,
 } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { caseAccess } from "@/lib/case-access";
-import { requireUser } from "@/lib/current-user";
-import { formatDate } from "@/lib/format";
-import { listTasksForUser } from "@/lib/task-access";
+import Link from "next/link";
 import { PageHeader, PageShell } from "@/components/page-shell";
 import StatCard from "@/components/stat-card";
 import { StageBadge } from "@/components/status-badge";
@@ -27,6 +22,11 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { caseAccess } from "@/lib/case-access";
+import { requireUser } from "@/lib/current-user";
+import { formatDate } from "@/lib/format";
+import { prisma } from "@/lib/prisma";
+import { listTasksForUser } from "@/lib/task-access";
 import InitiatorDashboard from "./initiator-dashboard";
 
 const roleText: Record<string, string> = {

@@ -1,5 +1,3 @@
-import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
 import DeleteDialog from "@/components/delete-dialog";
 import { PageHeader, PageShell } from "@/components/page-shell";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +9,8 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/require-admin";
 import { deleteGroup } from "./actions";
 import { CreateGroupDialog, RenameGroupDialog } from "./group-dialogs";
 

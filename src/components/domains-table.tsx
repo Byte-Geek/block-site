@@ -1,6 +1,6 @@
+import { Search } from "lucide-react";
 import Form from "next/form";
 import Link from "next/link";
-import { Search } from "lucide-react";
 import Pagination from "@/components/pagination";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,10 +63,7 @@ export default function DomainsTable({
 								: `${allTotal} domenii în listă`}
 						</CardDescription>
 					</div>
-					<Form
-						action={basePath}
-						className="flex w-full gap-2 sm:w-80"
-					>
+					<Form action={basePath} className="flex w-full gap-2 sm:w-80">
 						{size !== DEFAULT_PAGE_SIZE && (
 							<input type="hidden" name="size" value={size} />
 						)}
@@ -114,9 +111,7 @@ export default function DomainsTable({
 										colSpan={2}
 										className="h-24 text-center text-muted-foreground"
 									>
-										{q
-											? `Niciun domeniu pentru „${q}”`
-											: "Lista este goală"}
+										{q ? `Niciun domeniu pentru „${q}”` : "Lista este goală"}
 									</TableCell>
 								</TableRow>
 							) : (

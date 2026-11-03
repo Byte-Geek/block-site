@@ -1,9 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
 import { LoaderCircle } from "lucide-react";
+import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { setIspStatus } from "./actions";
 import { FormError } from "@/components/form-error";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -21,6 +20,7 @@ import {
 	ispStatusLabels,
 	needsReasonStatuses,
 } from "@/lib/constants";
+import { setIspStatus } from "./actions";
 
 type Props = { taskId: string; initialStatus: string };
 

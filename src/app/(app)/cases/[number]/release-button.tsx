@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
 import { LoaderCircle } from "lucide-react";
+import { useActionState, useState } from "react";
 import { toast } from "sonner";
 import { releaseTask } from "@/app/(app)/tasks/[id]/actions";
 import { FormError } from "@/components/form-error";

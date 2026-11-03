@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { Bell, CheckCheck, ChevronRight } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { formatDateTime } from "@/lib/format";
-import { requireUser } from "@/lib/current-user";
+import Link from "next/link";
 import { PageHeader, PageShell } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
+import { requireUser } from "@/lib/current-user";
+import { formatDateTime } from "@/lib/format";
+import { prisma } from "@/lib/prisma";
 import { cn } from "@/lib/utils";
 import { markAllRead } from "./actions";
 

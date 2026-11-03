@@ -1,13 +1,8 @@
+import { ArrowRight, FolderOpen, Plus, Search } from "lucide-react";
 import Form from "next/form";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, FolderOpen, Plus, Search } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { caseAccess } from "@/lib/case-access";
-import { requireUser } from "@/lib/current-user";
-import { formatDate } from "@/lib/format";
-import { stageLabels } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import FlashToast from "@/components/flash-toast";
 import { PageHeader, PageShell } from "@/components/page-shell";
 import Pagination from "@/components/pagination";
 import { StageBadge } from "@/components/status-badge";
@@ -21,7 +16,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import FlashToast from "@/components/flash-toast";
+import { caseAccess } from "@/lib/case-access";
+import { stageLabels } from "@/lib/constants";
+import { requireUser } from "@/lib/current-user";
+import { formatDate } from "@/lib/format";
+import { prisma } from "@/lib/prisma";
+import { cn } from "@/lib/utils";
 
 const SIZE = 20;
 const stageOrder = [

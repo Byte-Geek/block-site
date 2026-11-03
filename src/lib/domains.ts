@@ -55,10 +55,7 @@ function pickColumn(
 	let bestCount = 0;
 	for (const [col, values] of columns) {
 		const count = values.filter(looksLikeDomain).length;
-		if (
-			count > bestCount ||
-			(count === bestCount && count > 0 && col < best)
-		) {
+		if (count > bestCount || (count === bestCount && count > 0 && col < best)) {
 			best = col;
 			bestCount = count;
 		}

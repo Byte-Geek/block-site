@@ -1,13 +1,11 @@
 "use client";
 
-import { Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { z } from "zod";
 import { LoaderCircle, ShieldBan } from "lucide-react";
-import { authClient } from "@/lib/auth-client";
-import { LoginSchema } from "@/lib/schemas";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { useForm } from "react-hook-form";
+import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -18,6 +16,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { authClient } from "@/lib/auth-client";
+import { LoginSchema } from "@/lib/schemas";
 
 type LoginInput = z.infer<typeof LoginSchema>;
 
@@ -43,9 +43,7 @@ function LoginForm() {
 			return;
 		}
 		const next = searchParams.get("callbackURL");
-		router.push(
-			next && next.startsWith("/") && !next.startsWith("//") ? next : "/",
-		);
+		router.push(next?.startsWith("/") && !next.startsWith("//") ? next : "/");
 	}
 
 	return (

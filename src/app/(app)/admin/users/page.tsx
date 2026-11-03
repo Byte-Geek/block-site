@@ -1,10 +1,6 @@
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
 import DeleteDialog from "@/components/delete-dialog";
 import { PageHeader, PageShell } from "@/components/page-shell";
-import UserAvatar from "@/components/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import {
 	Table,
@@ -14,6 +10,10 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import UserAvatar from "@/components/user-avatar";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/require-admin";
 import { deleteUser } from "./actions";
 import { CreateUserDialog, EditUserDialog } from "./user-dialogs";
 

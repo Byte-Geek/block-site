@@ -1,7 +1,7 @@
 "use client";
 
-import { startTransition, useActionState, useRef, useState } from "react";
 import { Check, ListPlus, Pencil, Plus, X } from "lucide-react";
+import { startTransition, useActionState, useRef, useState } from "react";
 import { toast } from "sonner";
 import DeleteDialog from "@/components/delete-dialog";
 import FormDialog from "@/components/form-dialog";
@@ -120,7 +120,7 @@ export function DomainRow({ number, row }: { number: number; row: Row }) {
 			<TableCell className="text-muted-foreground tabular-nums">
 				{row.position}
 			</TableCell>
-			<TableCell>
+			<TableCell className="whitespace-normal">
 				{editing ? (
 					<div className="flex flex-col gap-1">
 						<Input
@@ -138,21 +138,25 @@ export function DomainRow({ number, row }: { number: number; row: Row }) {
 							aria-invalid={showError}
 						/>
 						{showError && (
-							<p className="text-xs text-destructive">{state.error}</p>
+							<p className="text-xs text-destructive">
+								{state.error}
+							</p>
 						)}
 					</div>
 				) : (
 					<div className="flex flex-col">
 						<span
 							className={cn(
-								"font-mono text-sm",
+								"font-mono text-sm break-all",
 								row.problem && "text-destructive",
 							)}
 						>
 							{row.value}
 						</span>
 						{row.problem && (
-							<span className="text-xs text-destructive">{row.problem}</span>
+							<span className="text-xs text-destructive">
+								{row.problem}
+							</span>
 						)}
 					</div>
 				)}

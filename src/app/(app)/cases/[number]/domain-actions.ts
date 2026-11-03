@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import { domainProblem, normalizeDomain } from "@/lib/domains";
+import { prisma } from "@/lib/prisma";
 import { requireGroup } from "@/lib/require-group";
 
 type State = { error?: string; ok?: string; details?: string[] };

@@ -1,22 +1,14 @@
+import { ArrowRight, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowRight, ChevronLeft } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { caseAccess } from "@/lib/case-access";
-import { requireUser } from "@/lib/current-user";
-import { formatDateTime } from "@/lib/format";
-import { domainProblem } from "@/lib/domains";
-import { ispStatusLabels } from "@/lib/constants";
-import { pageSizeFrom } from "@/lib/pagination";
-import { findOpenTask, listCaseTasks } from "@/lib/task-access";
 import CaseStepper from "@/components/case-stepper";
 import DomainsTable from "@/components/domains-table";
 import FlashToast from "@/components/flash-toast";
 import { PageHeader, PageShell } from "@/components/page-shell";
 import {
 	IspStatusBadge,
-	StageBadge,
 	ispTones,
+	StageBadge,
 } from "@/components/status-badge";
 import Timeline, { type TimelineEvent } from "@/components/timeline";
 import { Button } from "@/components/ui/button";
@@ -27,6 +19,14 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { caseAccess } from "@/lib/case-access";
+import { ispStatusLabels } from "@/lib/constants";
+import { requireUser } from "@/lib/current-user";
+import { domainProblem } from "@/lib/domains";
+import { formatDateTime } from "@/lib/format";
+import { pageSizeFrom } from "@/lib/pagination";
+import { prisma } from "@/lib/prisma";
+import { findOpenTask, listCaseTasks } from "@/lib/task-access";
 import CaseTasksCard from "./case-tasks-card";
 import DraftActions from "./draft-actions";
 import EditableDomainsTable from "./editable-domains-table";
@@ -69,10 +69,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 				access.group === "isp"
 					? {
 							where: {
-								OR: [
-									{ stage: { not: "isp" } },
-									{ userId: user.id },
-								],
+								OR: [{ stage: { not: "isp" } }, { userId: user.id }],
 							},
 						}
 					: true,
@@ -94,8 +91,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 		access.group === "initiator" &&
 		(c.stage === "draft" || c.stage === "initiator");
 	const isAdmin = user.role === "admin";
-	const showTasks =
-		isAdmin || access.group === "asp" || access.group === "anr";
+	const showTasks = isAdmin || access.group === "asp" || access.group === "anr";
 	const caseTasks = showTasks ? await listCaseTasks(c.processInstanceId) : [];
 
 	const ids = [
@@ -103,9 +99,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 		...c.comments.map((x) => x.userId),
 		...c.ispResponses.map((x) => x.userId),
 		...caseTasks.flatMap((t) =>
-			[t.assignee, t.candidateUser].filter((v): v is string =>
-				Boolean(v),
-			),
+			[t.assignee, t.candidateUser].filter((v): v is string => Boolean(v)),
 		),
 	];
 
@@ -151,9 +145,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 	const rejection = awaitingFix
 		? [...c.comments]
 				.filter((x) => x.decision === "nu")
-				.sort(
-					(a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
-				)[0]
+				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
 		: null;
 
 	const allRows = isEditable
@@ -289,12 +281,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 
 			<PageHeader
 				back={
-					<Button
-						asChild
-						variant="ghost"
-						size="sm"
-						className="-ml-2 w-fit"
-					>
+					<Button asChild variant="ghost" size="sm" className="-ml-2 w-fit">
 						<Link href="/cases">
 							<ChevronLeft />
 							Cazuri
@@ -318,15 +305,11 @@ export default async function CasePage({ params, searchParams }: Props) {
 								? "Ai o sarcină deschisă pe acest caz"
 								: "O sarcină liberă așteaptă pe acest caz"}
 						</p>
-						<p className="text-sm text-muted-foreground">
-							{openTask.name}
-						</p>
+						<p className="text-sm text-muted-foreground">{openTask.name}</p>
 					</div>
 					<Button asChild>
 						<Link href={`/tasks/${openTask.id}`}>
-							{openTask.mine
-								? "Deschide sarcina"
-								: "Vezi și preia"}
+							{openTask.mine ? "Deschide sarcina" : "Vezi și preia"}
 							<ArrowRight />
 						</Link>
 					</Button>
@@ -338,23 +321,17 @@ export default async function CasePage({ params, searchParams }: Props) {
 					<CardHeader>
 						<CardTitle>Lista trebuie corectată</CardTitle>
 						<CardDescription>
-							Corectează domeniile direct în tabel, apoi retrimite
-							lista. Poți și să o înlocuiești cu un fișier nou sau
-							să anulezi cazul.
+							Corectează domeniile direct în tabel, apoi retrimite lista. Poți
+							și să o înlocuiești cu un fișier nou sau să anulezi cazul.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="flex flex-col gap-4">
 						{rejection && (
 							<div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
 								<p className="font-medium text-destructive">
-									Respins de{" "}
-									{rejection.stage === "asp"
-										? "ASP"
-										: "ANRCETI"}
+									Respins de {rejection.stage === "asp" ? "ASP" : "ANRCETI"}
 								</p>
-								{rejection.text && (
-									<p className="mt-1">{rejection.text}</p>
-								)}
+								{rejection.text && <p className="mt-1">{rejection.text}</p>}
 								<p className="mt-1 text-xs text-muted-foreground">
 									{formatDateTime(rejection.createdAt)}
 								</p>
@@ -374,9 +351,8 @@ export default async function CasePage({ params, searchParams }: Props) {
 					<CardHeader>
 						<CardTitle>Ciornă, încă netrimisă</CardTitle>
 						<CardDescription>
-							Verifică lista, apoi trimite-o la validarea ASP.
-							Ciorna o vezi doar tu și o poți șterge oricând până
-							o trimiți.
+							Verifică lista, apoi trimite-o la validarea ASP. Ciorna o vezi
+							doar tu și o poți șterge oricând până o trimiți.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -393,8 +369,8 @@ export default async function CasePage({ params, searchParams }: Props) {
 				(c.stage === "cancelled" ? (
 					<Card>
 						<CardContent className="text-sm text-muted-foreground">
-							Cazul a fost anulat de inițiator. Procesul s-a
-							oprit, iar lista nu mai poate fi modificată.
+							Cazul a fost anulat de inițiator. Procesul s-a oprit, iar lista nu
+							mai poate fi modificată.
 						</CardContent>
 					</Card>
 				) : (
@@ -438,25 +414,15 @@ export default async function CasePage({ params, searchParams }: Props) {
 						<CardContent>
 							<dl className="grid gap-3 text-sm">
 								<div className="flex justify-between gap-4">
-									<dt className="text-muted-foreground">
-										Inițiator
-									</dt>
-									<dd className="font-medium">
-										{nameOf(c.createdById)}
-									</dd>
+									<dt className="text-muted-foreground">Inițiator</dt>
+									<dd className="font-medium">{nameOf(c.createdById)}</dd>
 								</div>
 								<div className="flex justify-between gap-4">
-									<dt className="text-muted-foreground">
-										Fișier
-									</dt>
-									<dd className="truncate font-medium">
-										{c.fileName}
-									</dd>
+									<dt className="text-muted-foreground">Fișier</dt>
+									<dd className="truncate font-medium">{c.fileName}</dd>
 								</div>
 								<div className="flex justify-between gap-4">
-									<dt className="text-muted-foreground">
-										Domenii
-									</dt>
+									<dt className="text-muted-foreground">Domenii</dt>
 									<dd className="font-medium tabular-nums">
 										{c._count.domains}
 									</dd>
@@ -481,9 +447,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 											key={r.userId}
 											className="flex items-center justify-between gap-3 text-sm"
 										>
-											<span className="truncate">
-												{nameOf(r.userId)}
-											</span>
+											<span className="truncate">{nameOf(r.userId)}</span>
 											<IspStatusBadge status={r.status} />
 										</li>
 									))}

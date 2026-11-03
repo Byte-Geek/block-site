@@ -1,10 +1,6 @@
+import { ArrowRight, Inbox } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Inbox } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/current-user";
-import { formatDateTime } from "@/lib/format";
-import { listTasksForUser, type FlowTask } from "@/lib/task-access";
 import FlashToast from "@/components/flash-toast";
 import { PageHeader, PageShell } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
@@ -16,6 +12,10 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { requireUser } from "@/lib/current-user";
+import { formatDateTime } from "@/lib/format";
+import { prisma } from "@/lib/prisma";
+import { type FlowTask, listTasksForUser } from "@/lib/task-access";
 
 type Props = { searchParams: Promise<{ ok?: string; tab?: string }> };
 
@@ -25,7 +25,6 @@ export default async function TasksPage({ searchParams }: Props) {
 	if (!user.group) redirect("/");
 	if (user.group === "initiator") redirect("/cases");
 
-	const isInitiator = user.group === "initiator";
 	const { mine, available } = await listTasksForUser(user);
 
 	const cases = await prisma.case.findMany({
@@ -33,7 +32,6 @@ export default async function TasksPage({ searchParams }: Props) {
 			processInstanceId: {
 				in: [...mine, ...available].map((t) => t.processInstanceId),
 			},
-			...(isInitiator ? { createdById: user.id } : {}),
 		},
 		include: { _count: { select: { domains: true } } },
 	});
@@ -51,9 +49,8 @@ export default async function TasksPage({ searchParams }: Props) {
 	const mineRows = toRows(mine);
 	const availableRows = toRows(available);
 
-	const active = isInitiator
-		? "mine"
-		: tab === "mine" || tab === "available"
+	const active =
+		tab === "mine" || tab === "available"
 			? tab
 			: mineRows.length > 0
 				? "mine"
@@ -65,9 +62,8 @@ export default async function TasksPage({ searchParams }: Props) {
 		{ key: "available", label: "Disponibile", count: availableRows.length },
 	];
 
-	const emptyText = isInitiator
-		? "Cazurile respinse de ASP sau ANRCETI apar aici, ca să poți retrimite lista corectată."
-		: active === "mine"
+	const emptyText =
+		active === "mine"
 			? "Nu ai nicio sarcină preluată. Alege una din fila „Disponibile”."
 			: user.group === "isp"
 				? "Sarcinile noi apar aici când un caz aprobat ajunge la ISP-uri."
@@ -78,41 +74,33 @@ export default async function TasksPage({ searchParams }: Props) {
 			<FlashToast ok={ok} />
 			<PageHeader
 				title="Sarcini"
-				description={
-					isInitiator
-						? mineRows.length === 1
-							? "O sarcină deschisă"
-							: `${mineRows.length} sarcini deschise`
-						: `${mineRows.length} preluate · ${availableRows.length} libere`
-				}
+				description={`${mineRows.length} preluate · ${availableRows.length} libere`}
 			/>
 
-			{!isInitiator && (
-				<div className="flex flex-wrap gap-2">
-					{tabs.map((t) => (
-						<Button
-							key={t.key}
-							asChild
-							size="sm"
-							variant={active === t.key ? "default" : "outline"}
-							className="rounded-full"
-						>
-							<Link href={`/tasks?tab=${t.key}`}>
-								{t.label}
-								<span
-									className={
-										active === t.key
-											? "tabular-nums opacity-80"
-											: "tabular-nums text-muted-foreground"
-									}
-								>
-									{t.count}
-								</span>
-							</Link>
-						</Button>
-					))}
-				</div>
-			)}
+			<div className="flex flex-wrap gap-2">
+				{tabs.map((t) => (
+					<Button
+						key={t.key}
+						asChild
+						size="sm"
+						variant={active === t.key ? "default" : "outline"}
+						className="rounded-full"
+					>
+						<Link href={`/tasks?tab=${t.key}`}>
+							{t.label}
+							<span
+								className={
+									active === t.key
+										? "tabular-nums opacity-80"
+										: "tabular-nums text-muted-foreground"
+								}
+							>
+								{t.count}
+							</span>
+						</Link>
+					</Button>
+				))}
+			</div>
 
 			{tasks.length === 0 ? (
 				<div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-12 text-center">

@@ -1,6 +1,6 @@
+import { Search, TriangleAlert } from "lucide-react";
 import Form from "next/form";
 import Link from "next/link";
-import { Search, TriangleAlert } from "lucide-react";
 import Pagination from "@/components/pagination";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,9 +50,7 @@ export default function EditableDomainsTable({
 
 	const needle = q.toLowerCase();
 	const filtered = withProblems.filter(
-		(r) =>
-			(!needle || r.value.includes(needle)) &&
-			(!onlyInvalid || r.problem),
+		(r) => (!needle || r.value.includes(needle)) && (!onlyInvalid || r.problem),
 	);
 	const total = filtered.length;
 	const pages = Math.max(1, Math.ceil(total / size));
@@ -134,7 +132,7 @@ export default function EditableDomainsTable({
 				)}
 
 				<div className="overflow-hidden rounded-lg border">
-					<Table>
+					<Table className="table-fixed">
 						<TableHeader>
 							<TableRow>
 								<TableHead className="w-20">Nr.</TableHead>

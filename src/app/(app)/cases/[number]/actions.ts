@@ -1,11 +1,11 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
+import { domainProblem, parseDomains } from "@/lib/domains";
 import { flowable } from "@/lib/flowable";
 import { notify } from "@/lib/notify";
-import { domainProblem, parseDomains } from "@/lib/domains";
+import { prisma } from "@/lib/prisma";
 import { requireGroup } from "@/lib/require-group";
 import { findInitiatorTask } from "@/lib/task-access";
 
@@ -109,7 +109,8 @@ export async function sendDraft(
 			})
 			.catch(() => {});
 		return {
-			error: "Procesul nu a putut fi pornit. Ciorna a rămas salvată, încearcă din nou.",
+			error:
+				"Procesul nu a putut fi pornit. Ciorna a rămas salvată, încearcă din nou.",
 		};
 	}
 
@@ -176,13 +177,9 @@ export async function resubmitCase(
 	if (claimed.count === 0) return { error: "Cazul a fost deja retrimis" };
 
 	try {
-		await flowable(
-			`/runtime/tasks/${encodeURIComponent(task.id)}`,
-			"POST",
-			{
-				action: "complete",
-			},
-		);
+		await flowable(`/runtime/tasks/${encodeURIComponent(task.id)}`, "POST", {
+			action: "complete",
+		});
 	} catch (e) {
 		console.error("RETRIMITERE:", e);
 		await prisma.case

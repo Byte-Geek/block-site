@@ -1,12 +1,12 @@
-import Form from "next/form";
-import Link from "next/link";
-import type { ReactNode } from "react";
 import {
 	ChevronLeft,
 	ChevronRight,
 	ChevronsLeft,
 	ChevronsRight,
 } from "lucide-react";
+import Form from "next/form";
+import Link from "next/link";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -90,11 +90,7 @@ export default function Pagination({
 				<Nav to={href(1)} disabled={page <= 1} label="Prima pagină">
 					<ChevronsLeft />
 				</Nav>
-				<Nav
-					to={href(page - 1)}
-					disabled={page <= 1}
-					label="Pagina anterioară"
-				>
+				<Nav to={href(page - 1)} disabled={page <= 1} label="Pagina anterioară">
 					<ChevronLeft />
 				</Nav>
 				<span className="px-2">
@@ -107,29 +103,17 @@ export default function Pagination({
 				>
 					<ChevronRight />
 				</Nav>
-				<Nav
-					to={href(pages)}
-					disabled={page >= pages}
-					label="Ultima pagină"
-				>
+				<Nav to={href(pages)} disabled={page >= pages} label="Ultima pagină">
 					<ChevronsRight />
 				</Nav>
 
 				{basePath && pages > 5 && (
-					<Form
-						action={basePath}
-						className="ml-2 flex items-center gap-1"
-					>
+					<Form action={basePath} className="ml-2 flex items-center gap-1">
 						{Object.entries({
 							...extra,
 							...(sizes ? { size: String(size) } : {}),
 						}).map(([name, value]) => (
-							<input
-								key={name}
-								type="hidden"
-								name={name}
-								value={value}
-							/>
+							<input key={name} type="hidden" name={name} value={value} />
 						))}
 						<Input
 							name="page"

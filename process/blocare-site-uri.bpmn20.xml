@@ -39,6 +39,6 @@
     </userTask>
     <sequenceFlow id="f9" sourceRef="ispTask" targetRef="end"/>
 
-<endEvent id="end"/>
+    <endEvent id="end"/>
   </process>
 </definitions>
