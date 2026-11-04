@@ -1,41 +1,38 @@
-import { ArrowRight, ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import CaseReport, { type IspFailures } from "@/components/case-report";
-import CaseStepper from "@/components/case-stepper";
-import CaseTabs, { type CaseTab } from "@/components/case-tabs";
-import DomainsTable from "@/components/domains-table";
-import FlashToast from "@/components/flash-toast";
-import IspStatusCard, { type IspItem } from "@/components/isp-status-card";
-import { PageHeader, PageShell } from "@/components/page-shell";
-import { ispTones, Pill, StageBadge } from "@/components/status-badge";
-import Timeline, {
-	type TimelineBranch,
-	type TimelineEvent,
-} from "@/components/timeline";
+import { notFound } from "next/navigation";
+import CaseReport from "@/components/cases/case-report";
+import CaseTabs, { type CaseTab } from "@/components/cases/case-tabs";
+import DomainsTable from "@/components/cases/domains-table";
+import IspStatusCard from "@/components/cases/isp-status-card";
+import Timeline from "@/components/cases/timeline";
+import FlashToast from "@/components/common/flash-toast";
+import { StageBadge } from "@/components/common/status-badge";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { caseAccess } from "@/lib/case-access";
-import { finalIspStatuses, ispStatusLabels } from "@/lib/constants";
-import { requireUser } from "@/lib/current-user";
-import { domainProblem } from "@/lib/domains";
-import { findDuplicates, groupDuplicates } from "@/lib/duplicates";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireCaseAccess } from "@/lib/cases/access";
+import { getDomainsPage } from "@/lib/cases/domain-page";
+import { domainProblem } from "@/lib/cases/domains";
+import { duplicatesByDomain } from "@/lib/cases/duplicates";
+import { parseCaseNumber } from "@/lib/cases/number";
 import { formatDateTime } from "@/lib/format";
 import { pageSizeFrom } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
-import { findOpenTask, listCaseTasks } from "@/lib/task-access";
-import CaseTasksCard from "./case-tasks-card";
-import DraftActions from "./draft-actions";
-import EditableDomainsTable from "./editable-domains-table";
-import FilesTab from "./files-tab";
-import NotesTab from "./notes-tab";
-import RejectedActions from "./rejected-actions";
+import { findOpenTask, listCaseTasks } from "@/lib/workflow/tasks";
+import CaseDetailsCard from "./_components/case-details-card";
+import CaseStatusPanel from "./_components/case-status-panel";
+import CaseTasksCard from "./_components/case-tasks-card";
+import EditableDomainsTable from "./_components/editable-domains-table";
+import FilesTab from "./_components/files-tab";
+import NotesTab from "./_components/notes-tab";
+import OpenTaskBanner from "./_components/open-task-banner";
+import {
+	buildEvents,
+	buildIspParticipants,
+	latestRejection,
+} from "./_actions/history";
+import { getCaseReport } from "./_actions/report";
 
 type Props = {
 	params: Promise<{ number: string }>;
@@ -51,9 +48,11 @@ type Props = {
 	}>;
 };
 
+const TABS: CaseTab[] = ["raport", "descriere", "comentarii", "fisiere"];
+
 export default async function CasePage({ params, searchParams }: Props) {
-	const n = Number((await params).number);
-	if (!Number.isInteger(n) || n < 1 || n > 2147483647) notFound();
+	const number = parseCaseNumber((await params).number);
+	if (!number) notFound();
 	const {
 		page = "1",
 		q = "",
@@ -64,19 +63,12 @@ export default async function CasePage({ params, searchParams }: Props) {
 		col,
 		tab: tabParam,
 	} = await searchParams;
-	const tab: CaseTab =
-		tabParam === "raport" ||
-		tabParam === "comentarii" ||
-		tabParam === "fisiere"
-			? tabParam
-			: "descriere";
+	const requestedTab = TABS.find((t) => t === tabParam);
 
-	const user = await requireUser();
-	const access = caseAccess(user);
-	if (!access) redirect("/");
+	const { user, access } = await requireCaseAccess();
 
 	const c = await prisma.case.findFirst({
-		where: { AND: [access.where, { number: n }] },
+		where: { AND: [access.where, { number }] },
 		include: {
 			comments: true,
 			ispResponses: true,
@@ -85,36 +77,30 @@ export default async function CasePage({ params, searchParams }: Props) {
 	});
 	if (!c) notFound();
 
-	const size = pageSizeFrom(sizeParam);
-	const where = {
-		caseId: c.id,
-		...(q ? { value: { contains: q.toLowerCase() } } : {}),
-	};
-
-	const isEditable =
-		access.group === "initiator" &&
-		(c.stage === "draft" || c.stage === "initiator");
+	const isInitiator = access.group === "initiator";
 	const isAdmin = user.role === "admin";
+	const isEditable =
+		isInitiator && (c.stage === "draft" || c.stage === "initiator");
 	const showTasks =
 		isAdmin || access.group === "asp" || access.group === "anr";
 	const caseTasks = showTasks ? await listCaseTasks(c.processInstanceId) : [];
 
 	const notes =
-		tab === "comentarii"
+		requestedTab === "comentarii"
 			? await prisma.caseNote.findMany({
 					where: { caseId: c.id },
 					orderBy: { createdAt: "asc" },
 				})
 			: [];
 	const files =
-		tab === "fisiere"
+		requestedTab === "fisiere"
 			? await prisma.caseFile.findMany({
 					where: { caseId: c.id },
 					orderBy: { createdAt: "asc" },
 				})
 			: [];
 
-	const ids = [
+	const userIds = [
 		c.createdById,
 		...notes.map((x) => x.userId),
 		...files.map((x) => x.userId),
@@ -126,28 +112,53 @@ export default async function CasePage({ params, searchParams }: Props) {
 			),
 		),
 	];
-
-	const [users, total, openTask] = await Promise.all([
-		prisma.user.findMany({ where: { id: { in: ids } } }),
-		prisma.caseDomain.count({ where }),
+	const [users, openTask] = await Promise.all([
+		prisma.user.findMany({ where: { id: { in: userIds } } }),
 		findOpenTask(user, c.processInstanceId),
 	]);
-	const pages = Math.max(1, Math.ceil(total / size));
-	const current = Math.min(Math.max(1, Number(page) || 1), pages);
+	const names = new Map<string, string>(users.map((u) => [u.id, u.name]));
+	const nameOf = (id: string) => names.get(id) ?? id;
 
-	const domains = isEditable
-		? []
-		: await prisma.caseDomain.findMany({
-				where,
-				orderBy: { position: "asc" },
-				skip: (current - 1) * size,
-				take: size,
+	const caseData = { ...c, domainCount: c._count.domains };
+	const events = buildEvents(caseData, nameOf);
+	const { items: ispItems, branches } = buildIspParticipants(
+		caseData,
+		caseTasks,
+		nameOf,
+	);
+
+	const report =
+		c.stage === "closed" && ispItems.length > 0
+			? await getCaseReport(c.id, ispItems, c._count.domains)
+			: null;
+
+	
+	const tab: CaseTab =
+		requestedTab === "raport" && !report
+			? "descriere"
+			: (requestedTab ?? (report ? "raport" : "descriere"));
+
+	const editable = isEditable
+		? await (async () => {
+				const rows = await prisma.caseDomain.findMany({
+					where: { caseId: c.id },
+					orderBy: { position: "asc" },
+					select: { id: true, position: true, value: true },
+				});
+				const duplicates = await duplicatesByDomain(c.id, user.id);
+				const invalidCount = rows.filter(
+					(r) => domainProblem(r.value) || duplicates[r.value],
+				).length;
+				return { rows, duplicates, invalidCount };
+			})()
+		: null;
+	const domainsPage = isEditable
+		? null
+		: await getDomainsPage(c.id, {
+				q,
+				page,
+				size: pageSizeFrom(sizeParam),
 			});
-	const allTotal = q
-		? await prisma.caseDomain.count({ where: { caseId: c.id } })
-		: total;
-
-	const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? id;
 
 	const taskRows = caseTasks.map((t) => ({
 		id: t.id,
@@ -162,42 +173,6 @@ export default async function CasePage({ params, searchParams }: Props) {
 		assigneeName: t.assignee ? nameOf(t.assignee) : null,
 	}));
 
-	const resubmitted = c.comments.some((x) => x.decision === "retrimis");
-	const hasSent = c.comments.some((x) => x.decision === "trimis");
-	const isDraft = access.group === "initiator" && c.stage === "draft";
-	const awaitingFix = access.group === "initiator" && c.stage === "initiator";
-	const rejection = awaitingFix
-		? [...c.comments]
-				.filter((x) => x.decision === "nu")
-				.sort(
-					(a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
-				)[0]
-		: null;
-
-	const allRows = isEditable
-		? await prisma.caseDomain.findMany({
-				where: { caseId: c.id },
-				orderBy: { position: "asc" },
-				select: { id: true, position: true, value: true },
-			})
-		: [];
-	const dupMap = isEditable
-		? groupDuplicates(await findDuplicates(c.id))
-		: new Map();
-	const duplicates = Object.fromEntries(
-		[...dupMap].map(([value, list]) => [
-			value,
-			list.map((d) => ({
-				number: d.number,
-				stage: d.stage,
-				own: d.createdById === user.id,
-			})),
-		]),
-	);
-	const invalidCount = allRows.filter(
-		(r) => domainProblem(r.value) || dupMap.has(r.value),
-	).length;
-
 	const flashDetail =
 		[
 			col && /^[A-Z]{1,3}$/.test(col)
@@ -208,243 +183,8 @@ export default async function CasePage({ params, searchParams }: Props) {
 			.filter(Boolean)
 			.join(" ") || undefined;
 
-	const events: TimelineEvent[] = [
-		...(hasSent
-			? []
-			: [
-					{
-						id: `upload-${c.id}`,
-						at: c.createdAt,
-						title: "Inițiatorul a încărcat lista",
-						who: nameOf(c.createdById),
-						role: "Inițiator",
-						note: resubmitted
-							? null
-							: `${c.fileName} · ${c._count.domains} domenii`,
-						tone: "primary",
-					} satisfies TimelineEvent,
-				]),
-		...c.comments
-			.filter((x) => x.stage !== "isp")
-			.map((x): TimelineEvent => {
-				const role =
-					x.stage === "initiator"
-						? "Inițiator"
-						: x.stage === "asp"
-							? "ASP"
-							: x.stage === "anr"
-								? "ANRCETI"
-								: "ISP";
-
-				if (x.decision === "trimis")
-					return {
-						id: x.id,
-						at: x.createdAt,
-						title: "Inițiatorul a trimis lista",
-						who: nameOf(x.userId),
-						role,
-						note: x.text,
-						tone: "primary",
-					};
-				if (x.decision === "anulat")
-					return {
-						id: x.id,
-						at: x.createdAt,
-						title: "Inițiatorul a anulat cazul",
-						who: nameOf(x.userId),
-						role,
-						note: x.text,
-						tone: "slate",
-					};
-				if (x.decision === "retrimis")
-					return {
-						id: x.id,
-						at: x.createdAt,
-						title: "Inițiatorul a retrimis lista",
-						who: nameOf(x.userId),
-						role,
-						note: x.text,
-						tone: "amber",
-					};
-				if (x.decision === "preluat")
-					return {
-						id: x.id,
-						at: x.createdAt,
-						title: `${role} a preluat cazul`,
-						who: nameOf(x.userId),
-						role,
-						note: x.text,
-						tone: "slate",
-					};
-				if (x.decision === "eliberat")
-					return {
-						id: x.id,
-						at: x.createdAt,
-						title: `${role} a eliberat cazul`,
-						who: nameOf(x.userId),
-						role,
-						note: x.text,
-						tone: "slate",
-					};
-
-				const approved = x.decision === "da";
-				return {
-					id: x.id,
-					at: x.createdAt,
-					title: `${role} a ${approved ? "aprobat" : "respins"} lista`,
-					who: nameOf(x.userId),
-					role,
-					note: x.text,
-					tone: approved ? "green" : "red",
-				};
-			}),
-	].sort((a, b) => a.at.getTime() - b.at.getTime());
-
-	const latestByIsp = new Map<string, (typeof c.ispResponses)[number]>();
-	for (const r of [...c.ispResponses].sort(
-		(a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
-	))
-		latestByIsp.set(r.userId, r);
-
-	const ispIds = [
-		...new Set([
-			...c.comments.filter((x) => x.stage === "isp").map((x) => x.userId),
-			...c.ispResponses.map((x) => x.userId),
-			...caseTasks
-				.filter((t) => t.taskDefinitionKey === "ispTask")
-				.flatMap((t) => [t.assignee, t.candidateUser])
-				.filter((v): v is string => Boolean(v)),
-		]),
-	].sort((a, b) => nameOf(a).localeCompare(nameOf(b), "ro"));
-
-	const ispItems: IspItem[] = ispIds.map((uid) => {
-		const last = latestByIsp.get(uid);
-		const claim = c.comments
-			.filter(
-				(x) =>
-					x.stage === "isp" &&
-					x.userId === uid &&
-					(x.decision === "preluat" || x.decision === "eliberat"),
-			)
-			.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
-
-		if (last)
-			return {
-				id: uid,
-				name: nameOf(uid),
-				label: ispStatusLabels[last.status] ?? last.status,
-				tone: ispTones[last.status] ?? "slate",
-				done: finalIspStatuses.includes(last.status),
-			};
-		if (claim?.decision === "preluat")
-			return {
-				id: uid,
-				name: nameOf(uid),
-				label: "Preluat",
-				tone: "blue",
-				done: false,
-			};
-		return {
-			id: uid,
-			name: nameOf(uid),
-			label: "În așteptare",
-			tone: "amber",
-			done: false,
-		};
-	});
-
-	const report =
-		c.stage === "closed" && ispItems.length > 0
-			? await (async () => {
-					const failed = await prisma.ispDomainResult.findMany({
-						where: { caseId: c.id, blocked: false },
-						orderBy: { domain: { position: "asc" } },
-						select: {
-							id: true,
-							userId: true,
-							reason: true,
-							domain: { select: { value: true } },
-						},
-					});
-					const reporting = await prisma.ispDomainResult.groupBy({
-						by: ["userId"],
-						where: { caseId: c.id },
-					});
-					// Cazurile închise înainte de bifarea pe domenii nu au date.
-					if (reporting.length < ispItems.length) return null;
-
-					const failedIds = new Set(
-						failed.map((f) => f.domain.value),
-					);
-					const failures: IspFailures[] = ispItems.map((i) => ({
-						id: i.id,
-						name: i.name,
-						rows: failed
-							.filter((f) => f.userId === i.id)
-							.map((f) => ({
-								id: f.id,
-								value: f.domain.value,
-								reason: f.reason,
-							})),
-					}));
-					return {
-						blockedByAll: c._count.domains - failedIds.size,
-						failures,
-					};
-				})()
-			: null;
-
-	const activeTab: CaseTab =
-		tab === "raport" && !report
-			? "descriere"
-			: !tabParam && report
-				? "raport"
-				: tab;
-
-	const ispEventTitles: Record<string, string> = {
-		notificat: "Sarcină creată, ISP notificat",
-		preluat: "A preluat sarcina",
-		eliberat: "A eliberat sarcina",
-	};
-
-	const branches: TimelineBranch[] = ispItems.map((item) => {
-		const events: TimelineEvent[] = [
-			...c.comments
-				.filter((x) => x.stage === "isp" && x.userId === item.id)
-				.map(
-					(x): TimelineEvent => ({
-						id: x.id,
-						at: x.createdAt,
-						title: ispEventTitles[x.decision] ?? x.decision,
-						who: item.name,
-						role: "ISP",
-						note: x.text,
-						tone: x.decision === "notificat" ? "blue" : "slate",
-					}),
-				),
-			...c.ispResponses
-				.filter((x) => x.userId === item.id)
-				.map(
-					(x): TimelineEvent => ({
-						id: x.id,
-						at: x.createdAt,
-						title: `Stare: ${ispStatusLabels[x.status] ?? x.status}`,
-						who: item.name,
-						role: "ISP",
-						note: x.reason,
-						tone: ispTones[x.status] ?? "slate",
-					}),
-				),
-		].sort((a, b) => a.at.getTime() - b.at.getTime());
-
-		return {
-			id: item.id,
-			name: item.name,
-			badge: <Pill tone={item.tone}>{item.label}</Pill>,
-			events,
-		};
-	});
-
+	const basePath = `/cases/${c.number}`;
+	const isDraft = isInitiator && c.stage === "draft";
 	const historyCard = !isDraft && (
 		<Card>
 			<CardHeader>
@@ -483,40 +223,16 @@ export default async function CasePage({ params, searchParams }: Props) {
 				actions={<StageBadge stage={c.stage} />}
 			/>
 
-			{openTask && (
-				<div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
-					<div>
-						<p className="font-medium">
-							{openTask.mine
-								? "Ai o sarcină deschisă pe acest caz"
-								: "O sarcină liberă așteaptă pe acest caz"}
-						</p>
-						<p className="text-sm text-muted-foreground">
-							{openTask.name}
-						</p>
-					</div>
-					<Button asChild>
-						<Link href={`/tasks/${openTask.id}`}>
-							{openTask.mine
-								? "Deschide sarcina"
-								: "Vezi și preia"}
-							<ArrowRight />
-						</Link>
-					</Button>
-				</div>
-			)}
+			{openTask && <OpenTaskBanner task={openTask} />}
 
 			<CaseTabs
-				basePath={`/cases/${c.number}`}
-				active={activeTab}
+				basePath={basePath}
+				active={tab}
 				hasReport={Boolean(report)}
-				counts={{
-					comentarii: c._count.notes,
-					fisiere: c._count.files,
-				}}
+				counts={{ comentarii: c._count.notes, fisiere: c._count.files }}
 			/>
 
-			{activeTab === "raport" && report && (
+			{tab === "raport" && report && (
 				<CaseReport
 					total={c._count.domains}
 					blockedByAll={report.blockedByAll}
@@ -543,145 +259,49 @@ export default async function CasePage({ params, searchParams }: Props) {
 				/>
 			)}
 
-			{activeTab === "descriere" && (
+			{tab === "descriere" && (
 				<>
-					{awaitingFix && (
-						<Card className="border-amber-300 bg-amber-50/50">
-							<CardHeader>
-								<CardTitle>Lista trebuie corectată</CardTitle>
-								<CardDescription>
-									Corectează domeniile direct în tabel, apoi
-									retrimite lista. Poți și să o înlocuiești cu
-									un fișier nou sau să anulezi cazul.
-								</CardDescription>
-							</CardHeader>
-							<CardContent className="flex flex-col gap-4">
-								{rejection && (
-									<div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-										<p className="font-medium text-destructive">
-											Respins de{" "}
-											{rejection.stage === "asp"
-												? "ASP"
-												: "ANRCETI"}
-										</p>
-										{rejection.text && (
-											<p className="mt-1">
-												{rejection.text}
-											</p>
-										)}
-										<p className="mt-1 text-xs text-muted-foreground">
-											{formatDateTime(
-												rejection.createdAt,
-											)}
-										</p>
-									</div>
-								)}
-								<RejectedActions
-									number={c.number}
-									domainCount={c._count.domains}
-									invalidCount={invalidCount}
-								/>
-							</CardContent>
-						</Card>
-					)}
-
-					{isDraft && (
-						<Card className="border-primary/30 bg-primary/5">
-							<CardHeader>
-								<CardTitle>Ciornă, încă netrimisă</CardTitle>
-								<CardDescription>
-									Verifică lista, apoi trimite-o la validarea
-									ASP. Ciorna o vezi doar tu și o poți șterge
-									oricând până o trimiți.
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<DraftActions
-									number={c.number}
-									domainCount={c._count.domains}
-									invalidCount={invalidCount}
-								/>
-							</CardContent>
-						</Card>
-					)}
-
-					{!isDraft &&
-						(c.stage === "cancelled" ? (
-							<Card>
-								<CardContent className="text-sm text-muted-foreground">
-									Cazul a fost anulat de inițiator. Procesul
-									s-a oprit, iar lista nu mai poate fi
-									modificată.
-								</CardContent>
-							</Card>
-						) : (
-							<Card>
-								<CardContent>
-									<CaseStepper stage={c.stage} />
-								</CardContent>
-							</Card>
-						))}
+					<CaseStatusPanel
+						stage={c.stage}
+						isInitiator={isInitiator}
+						number={c.number}
+						domainCount={c._count.domains}
+						invalidCount={editable?.invalidCount ?? 0}
+						rejection={
+							isInitiator ? latestRejection(c.comments) : null
+						}
+					/>
 
 					<div className="grid gap-6 lg:grid-cols-[1fr_22rem] lg:items-start">
 						<div className="min-w-0">
-							{isEditable ? (
+							{editable ? (
 								<EditableDomainsTable
 									number={c.number}
-									rows={allRows}
-									duplicates={duplicates}
+									rows={editable.rows}
+									duplicates={editable.duplicates}
 									q={q}
 									page={Number(page) || 1}
-									size={size}
+									size={pageSizeFrom(sizeParam)}
 									onlyInvalid={problems === "1"}
-									basePath={`/cases/${c.number}`}
+									basePath={basePath}
 								/>
 							) : (
-								<DomainsTable
-									domains={domains}
-									total={total}
-									allTotal={allTotal}
-									page={current}
-									size={size}
-									q={q}
-									basePath={`/cases/${c.number}`}
-								/>
+								domainsPage && (
+									<DomainsTable
+										{...domainsPage}
+										q={q}
+										basePath={basePath}
+									/>
+								)
 							)}
 						</div>
 
 						<div className="order-first flex flex-col gap-6 lg:order-last">
-							<Card>
-								<CardHeader>
-									<CardTitle>Detalii</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<dl className="grid gap-3 text-sm">
-										<div className="flex justify-between gap-4">
-											<dt className="shrink-0 text-muted-foreground">
-												Inițiator
-											</dt>
-											<dd className="min-w-0 text-right font-medium wrap-break-word">
-												{nameOf(c.createdById)}
-											</dd>
-										</div>
-										<div className="flex justify-between gap-4">
-											<dt className="shrink-0 text-muted-foreground">
-												Fișier
-											</dt>
-											<dd className="min-w-0 text-right font-medium break-all">
-												{c.fileName}
-											</dd>
-										</div>
-										<div className="flex justify-between gap-4">
-											<dt className="shrink-0 text-muted-foreground">
-												Domenii
-											</dt>
-											<dd className="font-medium tabular-nums">
-												{c._count.domains}
-											</dd>
-										</div>
-									</dl>
-								</CardContent>
-							</Card>
+							<CaseDetailsCard
+								initiator={nameOf(c.createdById)}
+								fileName={c.fileName}
+								domainCount={c._count.domains}
+							/>
 
 							{taskRows.length > 0 && (
 								<CaseTasksCard

@@ -1,9 +1,9 @@
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import DomainsTable from "@/components/domains-table";
-import { PageHeader, PageShell } from "@/components/page-shell";
-import { IspStatusBadge, StageBadge } from "@/components/status-badge";
+import DomainsTable from "@/components/cases/domains-table";
+import { IspStatusBadge, StageBadge } from "@/components/common/status-badge";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -13,16 +13,21 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { requireUser } from "@/lib/current-user";
+import { requireUser } from "@/lib/auth/current-user";
+import { getDomainsPage } from "@/lib/cases/domain-page";
 import { formatDateTime } from "@/lib/format";
 import { pageSizeFrom } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
-import { getTaskForUser } from "@/lib/task-access";
-import ClaimBar from "./claim-bar";
-import DecisionForm from "./decision-form";
-import { IspDomainControl, IspSelectAll } from "./isp-domain-controls";
-import IspFinish from "./isp-finish";
-import IspForm from "./isp-form";
+import { getTaskForUser } from "@/lib/workflow/tasks";
+import ClaimBar from "./_components/claim-bar";
+import DecisionForm from "./_components/decision-form";
+import {
+	IspDomainControl,
+	IspSelectAll,
+} from "./_components/isp-domain-controls";
+import IspFinish from "./_components/isp-finish";
+import IspForm from "./_components/isp-form";
+import { getIspProgress } from "./_components/isp-progress";
 
 type Props = {
 	params: Promise<{ id: string }>;
@@ -40,23 +45,11 @@ export default async function TaskPage({ params, searchParams }: Props) {
 	if (!found) notFound();
 	const { task, c, mine } = found;
 
-	const size = pageSizeFrom(sizeParam);
-	const where = {
-		caseId: c.id,
-		...(q ? { value: { contains: q.toLowerCase() } } : {}),
-	};
-	const total = await prisma.caseDomain.count({ where });
-	const pages = Math.max(1, Math.ceil(total / size));
-	const current = Math.min(Math.max(1, Number(page) || 1), pages);
-	const domains = await prisma.caseDomain.findMany({
-		where,
-		orderBy: { position: "asc" },
-		skip: (current - 1) * size,
-		take: size,
+	const domainsPage = await getDomainsPage(c.id, {
+		q,
+		page,
+		size: pageSizeFrom(sizeParam),
 	});
-	const allTotal = q
-		? await prisma.caseDomain.count({ where: { caseId: c.id } })
-		: total;
 
 	const last =
 		user.group === "isp"
@@ -66,41 +59,20 @@ export default async function TaskPage({ params, searchParams }: Props) {
 				})
 			: null;
 
-	const isIspWorking = mine && user.group === "isp";
-	const mineWhere = { caseId: c.id, userId: user.id };
-	const results = isIspWorking
-		? await prisma.ispDomainResult.findMany({
-				where: {
-					...mineWhere,
-					domainId: { in: domains.map((d) => d.id) },
-				},
-			})
-		: [];
-	const totalDomains = isIspWorking
-		? await prisma.caseDomain.count({ where: { caseId: c.id } })
-		: 0;
-	const blockedCount = isIspWorking
-		? await prisma.ispDomainResult.count({
-				where: { ...mineWhere, blocked: true },
-			})
-		: 0;
-	const reasonCount = isIspWorking
-		? await prisma.ispDomainResult.count({
-				where: { ...mineWhere, blocked: false },
-			})
-		: 0;
-	const byDomain = new Map(results.map((r) => [r.domainId, r]));
+	const progress =
+		mine && user.group === "isp"
+			? await getIspProgress(
+					c.id,
+					user.id,
+					domainsPage.domains.map((d) => d.id),
+				)
+			: null;
 
 	return (
 		<PageShell>
 			<PageHeader
 				back={
-					<Button
-						asChild
-						variant="ghost"
-						size="sm"
-						className="-ml-2 w-fit"
-					>
+					<Button asChild variant="ghost" size="sm" className="-ml-2 w-fit">
 						<Link href="/tasks">
 							<ChevronLeft />
 							Sarcini
@@ -122,40 +94,29 @@ export default async function TaskPage({ params, searchParams }: Props) {
 			<div className="grid gap-6 lg:grid-cols-[1fr_22rem] lg:items-start">
 				<div className="min-w-0">
 					<DomainsTable
-						domains={domains}
-						total={total}
-						allTotal={allTotal}
-						page={current}
-						size={size}
+						{...domainsPage}
 						q={q}
 						basePath={`/tasks/${id}`}
 						extra={
-							isIspWorking
+							progress
 								? {
 										head: (
 											<IspSelectAll
 												taskId={task.id}
-												allBlocked={
-													blockedCount ===
-													totalDomains
-												}
+												allBlocked={progress.blocked === progress.total}
 											/>
 										),
 										cells: Object.fromEntries(
-											domains.map((d) => [
+											domainsPage.domains.map((d) => [
 												d.id,
 												<IspDomainControl
 													key={d.id}
 													taskId={task.id}
 													domainId={d.id}
 													blocked={
-														byDomain.get(d.id)
-															?.blocked ?? false
+														progress.byDomain.get(d.id)?.blocked ?? false
 													}
-													reason={
-														byDomain.get(d.id)
-															?.reason ?? null
-													}
+													reason={progress.byDomain.get(d.id)?.reason ?? null}
 												/>,
 											]),
 										),
@@ -175,8 +136,8 @@ export default async function TaskPage({ params, searchParams }: Props) {
 							<CardHeader>
 								<CardTitle>Decizie</CardTitle>
 								<CardDescription>
-									Verifică lista și aprobă sau respinge. La
-									respingere, comentariul este obligatoriu.
+									Verifică lista și aprobă sau respinge. La respingere,
+									comentariul este obligatoriu.
 								</CardDescription>
 							</CardHeader>
 							<CardContent>
@@ -188,30 +149,26 @@ export default async function TaskPage({ params, searchParams }: Props) {
 						</Card>
 					)}
 
-					{mine && user.group === "isp" && (
+					{progress && (
 						<Card>
 							<CardHeader>
 								<CardTitle>Starea blocării</CardTitle>
 								<CardDescription>
-									Marchează fiecare domeniu în tabel. Când
-									toate au bifă sau cauză, finalizezi sarcina.
+									Marchează fiecare domeniu în tabel. Când toate au bifă sau
+									cauză, finalizezi sarcina.
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="flex flex-col gap-4">
 								<div className="flex items-center justify-between text-sm">
-									<span className="text-muted-foreground">
-										Starea curentă
-									</span>
-									<IspStatusBadge
-										status={last?.status ?? null}
-									/>
+									<span className="text-muted-foreground">Starea curentă</span>
+									<IspStatusBadge status={last?.status ?? null} />
 								</div>
 								<Separator />
 								<IspFinish
 									taskId={task.id}
-									total={totalDomains}
-									blocked={blockedCount}
-									withReason={reasonCount}
+									total={progress.total}
+									blocked={progress.blocked}
+									withReason={progress.withReason}
 								/>
 								<Separator />
 								<IspForm

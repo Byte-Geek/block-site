@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/current-user";
+import { requireUser } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/prisma";
 
 export async function markAllRead() {

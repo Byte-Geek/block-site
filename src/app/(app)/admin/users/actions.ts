@@ -1,13 +1,13 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
-import { flowable } from "@/lib/flowable";
+import { randomUUID } from "node:crypto";
+import { auth } from "@/lib/auth/auth";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
-import { hasOpenTasks } from "@/lib/task-access";
+import { flowable } from "@/lib/workflow/flowable";
+import { hasOpenTasks } from "@/lib/workflow/tasks";
 
 type State = {
 	error?: string;

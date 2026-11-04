@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
-import { ispStatusLabels, stageLabels } from "@/lib/constants";
+import { ispStatusLabels, stageLabels } from "@/lib/cases/constants";
 import { cn } from "@/lib/utils";
 
 const tones = {
@@ -36,10 +36,7 @@ export const ispTones: Record<string, Tone> = {
 
 export function Pill({ tone, children }: { tone: Tone; children: ReactNode }) {
 	return (
-		<Badge
-			variant="outline"
-			className={cn("border-transparent", tones[tone])}
-		>
+		<Badge variant="outline" className={cn("border-transparent", tones[tone])}>
 			<span className="size-1.5 rounded-full bg-current" />
 			{children}
 		</Badge>

@@ -1,11 +1,12 @@
 import { ArrowRight, FolderOpen, Plus, Search } from "lucide-react";
 import Form from "next/form";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import FlashToast from "@/components/flash-toast";
-import { PageHeader, PageShell } from "@/components/page-shell";
-import Pagination from "@/components/pagination";
-import { StageBadge } from "@/components/status-badge";
+import EmptyState from "@/components/common/empty-state";
+import FilterPills from "@/components/common/filter-pills";
+import FlashToast from "@/components/common/flash-toast";
+import Pagination from "@/components/common/pagination";
+import { StageBadge } from "@/components/common/status-badge";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,12 +17,11 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { caseAccess } from "@/lib/case-access";
-import { stageLabels } from "@/lib/constants";
-import { requireUser } from "@/lib/current-user";
+import { requireCaseAccess } from "@/lib/cases/access";
+import { stageLabels } from "@/lib/cases/constants";
+import { countByStage } from "@/lib/cases/stats";
 import { formatDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { cn } from "@/lib/utils";
 
 const SIZE = 20;
 const stageOrder = [
@@ -45,10 +45,7 @@ type Props = {
 
 export default async function CasesPage({ searchParams }: Props) {
 	const { stage = "", q = "", page = "1", ok } = await searchParams;
-
-	const user = await requireUser();
-	const access = caseAccess(user);
-	if (!access) redirect("/");
+	const { access } = await requireCaseAccess();
 
 	const current = Math.max(1, Number(page) || 1);
 	const stageFilter = stageOrder.includes(stage) ? stage : "";
@@ -63,10 +60,7 @@ export default async function CasesPage({ searchParams }: Props) {
 						{
 							OR: [
 								{
-									fileName: {
-										contains: query,
-										mode: "insensitive" as const,
-									},
+									fileName: { contains: query, mode: "insensitive" as const },
 								},
 								...(num !== null ? [{ number: num }] : []),
 							],
@@ -79,12 +73,8 @@ export default async function CasesPage({ searchParams }: Props) {
 		? { AND: [searchWhere, { stage: stageFilter }] }
 		: searchWhere;
 
-	const [counts, total, cases] = await Promise.all([
-		prisma.case.groupBy({
-			by: ["stage"],
-			where: searchWhere,
-			_count: { _all: true },
-		}),
+	const [stages, total, cases] = await Promise.all([
+		countByStage(searchWhere),
 		prisma.case.count({ where }),
 		prisma.case.findMany({
 			where,
@@ -94,19 +84,6 @@ export default async function CasesPage({ searchParams }: Props) {
 			include: { _count: { select: { domains: true } } },
 		}),
 	]);
-
-	const countOf = (s: string) =>
-		counts.find((x) => x.stage === s)?._count._all ?? 0;
-	const pills = [
-		{
-			key: "",
-			label: "Toate",
-			count: counts.reduce((sum, x) => sum + x._count._all, 0),
-		},
-		...stageOrder
-			.filter((s) => countOf(s) > 0 || s === stageFilter)
-			.map((s) => ({ key: s, label: stageLabels[s], count: countOf(s) })),
-	];
 
 	const href = (over: { stage?: string; page?: number }) => {
 		const st = over.stage ?? stageFilter;
@@ -118,9 +95,27 @@ export default async function CasesPage({ searchParams }: Props) {
 		return qs ? `/cases?${qs}` : "/cases";
 	};
 
+	const pills = [
+		{ key: "", label: "Toate", count: stages.total },
+		...stageOrder
+			.filter((s) => stages.of(s) > 0 || s === stageFilter)
+			.map((s) => ({ key: s, label: stageLabels[s], count: stages.of(s) })),
+	].map((p) => ({
+		...p,
+		href: href({ stage: p.key }),
+		active: p.key === stageFilter,
+	}));
+
 	const filtersActive = Boolean(stageFilter || query);
-	const pages = Math.max(1, Math.ceil(total / SIZE));
 	const isInitiator = access.group === "initiator";
+	const newCaseButton = isInitiator && (
+		<Button asChild size="sm" className="mt-2">
+			<Link href="/cases/new">
+				<Plus />
+				Listă nouă
+			</Link>
+		</Button>
+	);
 
 	return (
 		<PageShell>
@@ -141,32 +136,7 @@ export default async function CasesPage({ searchParams }: Props) {
 			/>
 
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<div className="flex flex-wrap gap-2">
-					{pills.map((p) => {
-						const active = p.key === stageFilter;
-						return (
-							<Button
-								key={p.key || "all"}
-								asChild
-								size="sm"
-								variant={active ? "default" : "outline"}
-								className="rounded-full"
-							>
-								<Link href={href({ stage: p.key })}>
-									{p.label}
-									<span
-										className={cn(
-											"tabular-nums",
-											active ? "opacity-80" : "text-muted-foreground",
-										)}
-									>
-										{p.count}
-									</span>
-								</Link>
-							</Button>
-						);
-					})}
-				</div>
+				<FilterPills items={pills} />
 
 				<Form action="/cases" className="flex w-full gap-2 sm:w-80">
 					{stageFilter && (
@@ -188,37 +158,29 @@ export default async function CasesPage({ searchParams }: Props) {
 			</div>
 
 			{total === 0 ? (
-				<div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-12 text-center">
-					<div className="flex size-10 items-center justify-center rounded-full bg-muted">
-						<FolderOpen className="size-5 text-muted-foreground" />
-					</div>
-					<p className="font-medium">
-						{filtersActive
+				<EmptyState
+					icon={FolderOpen}
+					title={
+						filtersActive
 							? "Niciun caz pentru filtrele alese"
-							: "Nu există cazuri"}
-					</p>
-					<p className="max-w-sm text-sm text-muted-foreground">
-						{filtersActive
-							? "Schimbă căutarea sau alege altă etapă."
-							: isInitiator
-								? "Încarcă prima listă de domenii ca să începi un caz."
-								: "Cazurile apar aici când inițiatorul încarcă o listă."}
-					</p>
-					{filtersActive ? (
-						<Button asChild variant="outline" size="sm" className="mt-2">
-							<Link href="/cases">Resetează filtrele</Link>
-						</Button>
-					) : (
-						isInitiator && (
-							<Button asChild size="sm" className="mt-2">
-								<Link href="/cases/new">
-									<Plus />
-									Listă nouă
-								</Link>
+							: "Nu există cazuri"
+					}
+					action={
+						filtersActive ? (
+							<Button asChild variant="outline" size="sm" className="mt-2">
+								<Link href="/cases">Resetează filtrele</Link>
 							</Button>
+						) : (
+							newCaseButton
 						)
-					)}
-				</div>
+					}
+				>
+					{filtersActive
+						? "Schimbă căutarea sau alege altă etapă."
+						: isInitiator
+							? "Încarcă prima listă de domenii ca să începi un caz."
+							: "Cazurile apar aici când inițiatorul încarcă o listă."}
+				</EmptyState>
 			) : (
 				<div className="flex flex-col gap-4">
 					<div className="overflow-hidden rounded-xl border bg-card">
@@ -236,57 +198,57 @@ export default async function CasesPage({ searchParams }: Props) {
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{cases.map((c) => (
-									<TableRow key={c.id}>
-										<TableCell className="font-medium">
-											<Link
-												href={`/cases/${c.number}`}
-												className="hover:underline"
-											>
-												#{c.number}
-											</Link>
-										</TableCell>
-										<TableCell className="hidden max-w-56 truncate text-muted-foreground md:table-cell">
-											{c.fileName}
-										</TableCell>
-										<TableCell className="tabular-nums">
-											{c._count.domains}
-										</TableCell>
-										<TableCell>
-											<StageBadge stage={c.stage} />
-										</TableCell>
-										<TableCell className="hidden text-muted-foreground md:table-cell">
-											{formatDate(c.createdAt)}
-										</TableCell>
-										<TableCell className="text-right">
-											<Button
-												asChild
-												size="sm"
-												variant={
-													isInitiator &&
-													(c.stage === "initiator" || c.stage === "draft")
-														? "default"
-														: "outline"
-												}
-											>
-												<Link href={`/cases/${c.number}`}>
-													{c.stage === "draft"
-														? "Continuă"
-														: isInitiator && c.stage === "initiator"
-															? "Corectează"
-															: "Deschide"}
-													<ArrowRight />
+								{cases.map((c) => {
+									const actionable =
+										isInitiator &&
+										(c.stage === "initiator" || c.stage === "draft");
+									return (
+										<TableRow key={c.id}>
+											<TableCell className="font-medium">
+												<Link
+													href={`/cases/${c.number}`}
+													className="hover:underline"
+												>
+													#{c.number}
 												</Link>
-											</Button>
-										</TableCell>
-									</TableRow>
-								))}
+											</TableCell>
+											<TableCell className="hidden max-w-56 truncate text-muted-foreground md:table-cell">
+												{c.fileName}
+											</TableCell>
+											<TableCell className="tabular-nums">
+												{c._count.domains}
+											</TableCell>
+											<TableCell>
+												<StageBadge stage={c.stage} />
+											</TableCell>
+											<TableCell className="hidden text-muted-foreground md:table-cell">
+												{formatDate(c.createdAt)}
+											</TableCell>
+											<TableCell className="text-right">
+												<Button
+													asChild
+													size="sm"
+													variant={actionable ? "default" : "outline"}
+												>
+													<Link href={`/cases/${c.number}`}>
+														{c.stage === "draft"
+															? "Continuă"
+															: actionable
+																? "Corectează"
+																: "Deschide"}
+														<ArrowRight />
+													</Link>
+												</Button>
+											</TableCell>
+										</TableRow>
+									);
+								})}
 							</TableBody>
 						</Table>
 					</div>
 					<Pagination
 						page={current}
-						pages={pages}
+						pages={Math.max(1, Math.ceil(total / SIZE))}
 						total={total}
 						size={SIZE}
 						href={(p) => href({ page: p })}

@@ -3,16 +3,18 @@ import {
 	DeleteObjectCommand,
 	GetObjectCommand,
 	HeadBucketCommand,
+	HeadObjectCommand,
+	PutBucketCorsCommand,
 	PutObjectCommand,
 	S3Client,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
 const bucket = process.env.S3_BUCKET ?? "blocare-files";
 
-const s3 = new S3Client({
-	endpoint: process.env.S3_ENDPOINT,
+const config = {
 	region: process.env.S3_REGION ?? "us-east-1",
 	forcePathStyle: true,
 	requestChecksumCalculation: "WHEN_REQUIRED",
@@ -21,16 +23,44 @@ const s3 = new S3Client({
 		accessKeyId: process.env.S3_ACCESS_KEY ?? "",
 		secretAccessKey: process.env.S3_SECRET_KEY ?? "",
 	},
+} as const;
+
+const s3 = new S3Client({ ...config, endpoint: process.env.S3_ENDPOINT });
+
+const signer = new S3Client({
+	...config,
+	endpoint: process.env.S3_PUBLIC_ENDPOINT ?? process.env.S3_ENDPOINT,
 });
 
 let ready: Promise<unknown> | null = null;
 
-// Creează bucket-ul la prima folosire, dacă nu există.
 function ensureBucket() {
 	if (!ready) {
 		ready = s3
 			.send(new HeadBucketCommand({ Bucket: bucket }))
 			.catch(() => s3.send(new CreateBucketCommand({ Bucket: bucket })))
+			.then(() =>
+				s3
+					.send(
+						new PutBucketCorsCommand({
+							Bucket: bucket,
+							CORSConfiguration: {
+								CORSRules: [
+									{
+										AllowedOrigins: [
+											process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
+										],
+										AllowedMethods: ["PUT", "GET"],
+										AllowedHeaders: ["*"],
+										ExposeHeaders: ["ETag"],
+										MaxAgeSeconds: 3000,
+									},
+								],
+							},
+						}),
+					)
+					.catch((e) => console.warn("S3 CORS:", e.message)),
+			)
 			.catch((e) => {
 				ready = null;
 				throw e;
@@ -39,7 +69,50 @@ function ensureBucket() {
 	return ready;
 }
 
-export type StoredFile = {
+export function cleanFileName(name: string) {
+	return (name.split(/[\\/]/).pop() || "fisier").slice(0, 255);
+}
+
+export async function presignUpload(key: string) {
+	await ensureBucket();
+	return getSignedUrl(
+		signer,
+		new PutObjectCommand({ Bucket: bucket, Key: key }),
+		{
+			expiresIn: 300,
+		},
+	);
+}
+
+export function presignDownload(
+	key: string,
+	name: string,
+	contentType: string,
+) {
+	return getSignedUrl(
+		signer,
+		new GetObjectCommand({
+			Bucket: bucket,
+			Key: key,
+			ResponseContentType: contentType,
+			ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+		}),
+		{ expiresIn: 60 },
+	);
+}
+
+export async function objectSize(key: string) {
+	try {
+		const head = await s3.send(
+			new HeadObjectCommand({ Bucket: bucket, Key: key }),
+		);
+		return head.ContentLength ?? null;
+	} catch {
+		return null;
+	}
+}
+
+type StoredFile = {
 	key: string;
 	name: string;
 	size: number;
@@ -67,24 +140,18 @@ export async function storeFile(
 	} catch (e) {
 		console.error("S3 PUT:", e);
 		return {
-			error: "Fișierul nu a putut fi salvat. Verifică dacă serverul de fișiere (S3) rulează.",
+			error:
+				"Fișierul nu a putut fi salvat. Verifică dacă serverul de fișiere (S3) rulează.",
 		};
 	}
 	return {
 		data: {
 			key,
-			name: file.name.split(/[\\/]/).pop() || "fisier",
+			name: cleanFileName(file.name),
 			size: file.size,
 			contentType,
 		},
 	};
-}
-
-export async function getFile(key: string) {
-	const res = await s3.send(
-		new GetObjectCommand({ Bucket: bucket, Key: key }),
-	);
-	return res.Body?.transformToWebStream() ?? null;
 }
 
 export async function deleteFiles(keys: string[]) {

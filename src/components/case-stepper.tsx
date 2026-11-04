@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { stageLabels } from "@/lib/constants";
+import { stageLabels } from "@/lib/cases/constants";
 import { cn } from "@/lib/utils";
 
 const steps = ["initiator", "asp", "anr", "isp", "closed"] as const;

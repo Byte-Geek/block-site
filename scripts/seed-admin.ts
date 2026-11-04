@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { auth } from "../src/lib/auth";
+import { auth } from "../src/lib/auth/auth";
 
 async function main() {
 	const email = process.env.SEED_ADMIN_EMAIL!;
@@ -12,12 +12,15 @@ async function main() {
 		return;
 	}
 
-	const user = await ctx.internalAdapter.createUser({
-		email,
-		name: "Admin",
-		role: "admin",
-		emailVerified: true,
-	}, { method: "admin" });
+	const user = await ctx.internalAdapter.createUser(
+		{
+			email,
+			name: "Admin",
+			role: "admin",
+			emailVerified: true,
+		},
+		{ method: "admin" },
+	);
 
 	await ctx.internalAdapter.linkAccount({
 		userId: user.id,

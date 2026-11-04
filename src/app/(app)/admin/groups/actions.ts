@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { flowable } from "@/lib/flowable";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { flowable } from "@/lib/workflow/flowable";
 
 type State = { error?: string; ok?: string; key?: string; name?: string };
 

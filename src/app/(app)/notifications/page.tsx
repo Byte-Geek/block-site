@@ -1,8 +1,8 @@
 import { Bell, CheckCheck, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { PageHeader, PageShell } from "@/components/page-shell";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
-import { requireUser } from "@/lib/current-user";
+import { requireUser } from "@/lib/auth/current-user";
 import { formatDateTime } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { cn } from "@/lib/utils";

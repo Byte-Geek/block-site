@@ -1,6 +1,6 @@
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { PageHeader, PageShell } from "@/components/page-shell";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -9,9 +9,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { requireGroup } from "@/lib/require-group";
-import EmptyDraftButton from "./empty-draft-button";
-import UploadForm from "./upload-form";
+import { requireGroup } from "@/lib/auth/require-group";
+import EmptyDraftButton from "./_components/empty-draft-button";
+import UploadForm from "./_components/upload-form";
 
 export default async function NewCasePage() {
 	await requireGroup("initiator");

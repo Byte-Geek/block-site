@@ -1,5 +1,5 @@
-import DeleteDialog from "@/components/delete-dialog";
-import { PageHeader, PageShell } from "@/components/page-shell";
+import DeleteDialog from "@/components/common/delete-dialog";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Badge } from "@/components/ui/badge";
 import {
 	Table,
@@ -9,10 +9,13 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import {
+	CreateGroupDialog,
+	RenameGroupDialog,
+} from "./_components/group-dialogs";
 import { deleteGroup } from "./actions";
-import { CreateGroupDialog, RenameGroupDialog } from "./group-dialogs";
 
 const systemGroups = ["initiator", "asp", "anr", "isp"];
 

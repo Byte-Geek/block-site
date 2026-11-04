@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { parseDomains } from "@/lib/domains";
+import { requireGroup } from "@/lib/auth/require-group";
+import { parseDomains } from "@/lib/cases/domains";
 import { prisma } from "@/lib/prisma";
-import { requireGroup } from "@/lib/require-group";
 import { deleteFiles, storeFile } from "@/lib/storage";
 
 type State = { error?: string; details?: string[] };

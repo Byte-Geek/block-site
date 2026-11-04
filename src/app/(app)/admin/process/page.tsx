@@ -1,4 +1,4 @@
-import { PageHeader, PageShell } from "@/components/page-shell";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Badge } from "@/components/ui/badge";
 import {
 	Card,
@@ -7,10 +7,10 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { formatDateTime } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
-import UploadProcessForm from "./upload-process-form";
+import UploadProcessForm from "./_components/upload-process-form";
 
 export default async function ProcessPage() {
 	await requireAdmin();

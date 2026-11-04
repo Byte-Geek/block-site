@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
-import DeleteDialog from "@/components/delete-dialog";
-import { PageHeader, PageShell } from "@/components/page-shell";
+import DeleteDialog from "@/components/common/delete-dialog";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
+import UserAvatar from "@/components/layout/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import {
 	Table,
@@ -10,12 +11,11 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import UserAvatar from "@/components/user-avatar";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/auth";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { CreateUserDialog, EditUserDialog } from "./_components/user-dialogs";
 import { deleteUser } from "./actions";
-import { CreateUserDialog, EditUserDialog } from "./user-dialogs";
 
 export default async function UsersPage() {
 	await requireAdmin();

@@ -1,7 +1,7 @@
-import { caseAccess } from "@/lib/case-access";
-import { requireUser } from "@/lib/current-user";
+import { requireUser } from "@/lib/auth/current-user";
+import { caseAccess } from "@/lib/cases/access";
 import { prisma } from "@/lib/prisma";
-import { getFile } from "@/lib/storage";
+import { presignDownload } from "@/lib/storage";
 
 export async function GET(
 	_req: Request,
@@ -17,18 +17,8 @@ export async function GET(
 	});
 	if (!f) return new Response("Fișierul nu a fost găsit", { status: 404 });
 
-	const body = await getFile(f.key).catch(() => null);
-	if (!body)
-		return new Response("Fișierul nu poate fi citit din S3", {
-			status: 502,
-		});
-
-	return new Response(body, {
-		headers: {
-			"Content-Type": f.contentType,
-			"Content-Length": String(f.size),
-			"Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(f.name)}`,
-			"X-Content-Type-Options": "nosniff",
-		},
-	});
+	return Response.redirect(
+		await presignDownload(f.key, f.name, f.contentType),
+		302,
+	);
 }

@@ -3,12 +3,12 @@
 import { revalidatePath } from "next/cache";
 
 import { redirect } from "next/navigation";
-import { finalIspStatuses, ispStatuses } from "@/lib/constants";
-import { requireUser } from "@/lib/current-user";
-import { flowable } from "@/lib/flowable";
-import { notify, notifyIspTasks } from "@/lib/notify";
+import { requireUser } from "@/lib/auth/current-user";
+import { finalIspStatuses, ispStatuses } from "@/lib/cases/constants";
+import { notify, notifyIspTasks } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
-import { type FlowTask, getTaskForUser } from "@/lib/task-access";
+import { flowable } from "@/lib/workflow/flowable";
+import { type FlowTask, getTaskForUser } from "@/lib/workflow/tasks";
 
 export async function decide(
 	_prev: { error?: string },
@@ -168,7 +168,8 @@ export async function setIspStatus(
 	if (!ispStatuses.includes(status)) return { error: "Stare invalidă" };
 	if (finalIspStatuses.includes(status))
 		return {
-			error: "Starea finală se stabilește cu butonul Finalizează, după ce toate domeniile au bifă sau motiv",
+			error:
+				"Starea finală se stabilește cu butonul Finalizează, după ce toate domeniile au bifă sau motiv",
 		};
 
 	const found = await getTaskForUser(taskId, user);
@@ -406,10 +407,7 @@ export async function releaseTask(
 				userId: task.assignee,
 				stage,
 				decision: "eliberat",
-				text:
-					task.assignee !== user.id
-						? "Eliberată de administrator"
-						: null,
+				text: task.assignee !== user.id ? "Eliberată de administrator" : null,
 			},
 		})
 		.catch((e) => console.error("RELEASE EVENT:", e));

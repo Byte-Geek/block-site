@@ -1,8 +1,10 @@
 import { ArrowRight, Inbox } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import FlashToast from "@/components/flash-toast";
-import { PageHeader, PageShell } from "@/components/page-shell";
+import EmptyState from "@/components/common/empty-state";
+import FilterPills from "@/components/common/filter-pills";
+import FlashToast from "@/components/common/flash-toast";
+import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import {
 	Table,
@@ -12,10 +14,10 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { requireUser } from "@/lib/current-user";
+import { requireUser } from "@/lib/auth/current-user";
 import { formatDateTime } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { type FlowTask, listTasksForUser } from "@/lib/task-access";
+import { type FlowTask, listTasksForUser } from "@/lib/workflow/tasks";
 
 type Props = { searchParams: Promise<{ ok?: string; tab?: string }> };
 
@@ -57,10 +59,14 @@ export default async function TasksPage({ searchParams }: Props) {
 				: "available";
 	const tasks = active === "mine" ? mineRows : availableRows;
 
-	const tabs = [
+	const pills = [
 		{ key: "mine", label: "Ale mele", count: mineRows.length },
 		{ key: "available", label: "Disponibile", count: availableRows.length },
-	];
+	].map((p) => ({
+		...p,
+		href: `/tasks?tab=${p.key}`,
+		active: p.key === active,
+	}));
 
 	const emptyText =
 		active === "mine"
@@ -77,39 +83,12 @@ export default async function TasksPage({ searchParams }: Props) {
 				description={`${mineRows.length} preluate · ${availableRows.length} libere`}
 			/>
 
-			<div className="flex flex-wrap gap-2">
-				{tabs.map((t) => (
-					<Button
-						key={t.key}
-						asChild
-						size="sm"
-						variant={active === t.key ? "default" : "outline"}
-						className="rounded-full"
-					>
-						<Link href={`/tasks?tab=${t.key}`}>
-							{t.label}
-							<span
-								className={
-									active === t.key
-										? "tabular-nums opacity-80"
-										: "tabular-nums text-muted-foreground"
-								}
-							>
-								{t.count}
-							</span>
-						</Link>
-					</Button>
-				))}
-			</div>
+			<FilterPills items={pills} />
 
 			{tasks.length === 0 ? (
-				<div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-12 text-center">
-					<div className="flex size-10 items-center justify-center rounded-full bg-muted">
-						<Inbox className="size-5 text-muted-foreground" />
-					</div>
-					<p className="font-medium">Nicio sarcină aici</p>
-					<p className="max-w-sm text-sm text-muted-foreground">{emptyText}</p>
-				</div>
+				<EmptyState icon={Inbox} title="Nicio sarcină aici">
+					{emptyText}
+				</EmptyState>
 			) : (
 				<div className="overflow-hidden rounded-xl border bg-card">
 					<Table>
