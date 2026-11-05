@@ -69,7 +69,7 @@ export default function CaseReport({
 													<TableCell className="font-mono text-sm break-all whitespace-normal">
 														{r.value}
 													</TableCell>
-													<TableCell className="break-words whitespace-normal">
+													<TableCell className="wrap-break-word whitespace-normal">
 														{r.reason}
 													</TableCell>
 												</TableRow>

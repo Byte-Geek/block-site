@@ -16,7 +16,7 @@ export default function CaseDetailsCard({
 				<dl className="grid gap-3 text-sm">
 					<div className="flex justify-between gap-4">
 						<dt className="shrink-0 text-muted-foreground">Inițiator</dt>
-						<dd className="min-w-0 text-right font-medium break-words">
+						<dd className="min-w-0 text-right font-medium wrap-break-word">
 							{initiator}
 						</dd>
 					</div>

@@ -43,7 +43,7 @@ export default function CaseNotesCard({ number, notes, nameOf }: Props) {
 									{" · "}
 									{formatDateTime(n.createdAt)}
 								</p>
-								<p className="break-words whitespace-pre-wrap">{n.text}</p>
+								<p className="wrap-break-word whitespace-pre-wrap">{n.text}</p>
 							</li>
 						))}
 					</ul>
