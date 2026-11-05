@@ -1,7 +1,3 @@
-import Timeline, {
-	type TimelineBranch,
-	type TimelineEvent,
-} from "@/components/cases/timeline";
 import {
 	Card,
 	CardContent,
@@ -9,6 +5,8 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import type { TimelineBranch, TimelineEvent } from "@/lib/cases/case-history";
+import Timeline from "./timeline";
 
 type Props = {
 	events: TimelineEvent[];

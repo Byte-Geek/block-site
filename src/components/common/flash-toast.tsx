@@ -8,7 +8,6 @@ const messages: Record<string, string> = {
 	decision: "Decizia a fost înregistrată",
 	isp: "Răspunsul a fost trimis",
 	resubmit: "Lista a fost retrimisă",
-	uploaded: "Lista a fost încărcată, cazul așteaptă validarea ASP",
 	draft: "Ciorna a fost creată. Verifică lista și apasă Trimite.",
 	sent: "Lista a fost trimisă la validarea ASP",
 	cancelled: "Ciorna a fost ștearsă",

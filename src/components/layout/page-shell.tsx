@@ -1,4 +1,7 @@
+import { ChevronLeft } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function PageShell({
@@ -23,14 +26,21 @@ export function PageShell({
 type HeaderProps = {
 	title: ReactNode;
 	description?: ReactNode;
-	back?: ReactNode;
+	back?: { href: string; label: string };
 	actions?: ReactNode;
 };
 
 export function PageHeader({ title, description, back, actions }: HeaderProps) {
 	return (
 		<div className="flex flex-col gap-2">
-			{back}
+			{back && (
+				<Button asChild variant="ghost" size="sm" className="-ml-2 w-fit">
+					<Link href={back.href}>
+						<ChevronLeft />
+						{back.label}
+					</Link>
+				</Button>
+			)}
 			<div className="flex flex-wrap items-start justify-between gap-4">
 				<div className="flex flex-col gap-1">
 					<h1 className="text-2xl font-semibold tracking-tight">{title}</h1>

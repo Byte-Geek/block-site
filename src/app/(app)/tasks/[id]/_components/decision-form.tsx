@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { decide } from "@/app/(app)/tasks/[id]/actions";
 import { FormError } from "@/components/common/form-error";
 import {
 	AlertDialog,
@@ -17,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { decide } from "../_actions/decision-actions";
 
 const approveText = {
 	asp: "Lista va fi trimisă la validarea ANRCETI.",

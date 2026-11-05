@@ -1,7 +1,7 @@
-import { requireUser } from "@/lib/auth/current-user";
-import { caseAccess } from "@/lib/cases/access";
+import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { presignDownload } from "@/lib/storage";
+import { caseAccess } from "@/lib/rbac/case-access";
+import { createDownloadUrl } from "@/lib/storage/presigned-urls";
 
 export async function GET(
 	_req: Request,
@@ -12,13 +12,13 @@ export async function GET(
 	if (!access) return new Response("Interzis", { status: 403 });
 
 	const { id } = await params;
-	const f = await prisma.caseFile.findFirst({
+	const file = await prisma.caseFile.findFirst({
 		where: { id, case: access.where },
 	});
-	if (!f) return new Response("Fișierul nu a fost găsit", { status: 404 });
+	if (!file) return new Response("Fișierul nu a fost găsit", { status: 404 });
 
 	return Response.redirect(
-		await presignDownload(f.key, f.name, f.contentType),
+		await createDownloadUrl(file.key, file.name, file.contentType),
 		302,
 	);
 }

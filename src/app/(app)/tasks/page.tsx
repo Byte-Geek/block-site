@@ -14,11 +14,11 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { requireUser } from "@/lib/auth/current-user";
-import { can } from "@/lib/auth/permissions";
+import { requireUser } from "@/lib/auth/session";
+import { type FlowTask, listTasksForUser } from "@/lib/flowable/tasks";
 import { formatDateTime } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { type FlowTask, listTasksForUser } from "@/lib/workflow/tasks";
+import { can } from "@/lib/rbac/permissions";
 
 type Props = { searchParams: Promise<{ ok?: string; tab?: string }> };
 

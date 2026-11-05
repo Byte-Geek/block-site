@@ -1,13 +1,7 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
-import {
-	type ReactNode,
-	startTransition,
-	useActionState,
-	useState,
-} from "react";
-import { toast } from "sonner";
+import { type ReactNode, startTransition, useState } from "react";
 import { FormError } from "@/components/common/form-error";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +14,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
+import { useActionWithToast } from "@/hooks/use-action-with-toast";
 
 type State = { error?: string; ok?: string; details?: string[] };
 
@@ -40,17 +35,7 @@ function DialogForm({
 	children,
 	onDone,
 }: Omit<Props, "trigger"> & { onDone: () => void }) {
-	const [state, formAction, pending] = useActionState(
-		async (prev: State, data: FormData) => {
-			const result = await action(prev, data);
-			if (result.ok) {
-				toast.success(result.ok);
-				onDone();
-			}
-			return result;
-		},
-		{} as State,
-	);
+	const [state, formAction, pending] = useActionWithToast(action, onDone);
 
 	return (
 		<form

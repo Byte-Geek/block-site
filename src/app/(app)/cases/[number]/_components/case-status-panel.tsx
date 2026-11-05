@@ -1,4 +1,3 @@
-import CaseStepper from "@/components/cases/case-stepper";
 import {
 	Card,
 	CardContent,
@@ -7,8 +6,8 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/format";
-import DraftActions from "./draft-actions";
-import RejectedActions from "./rejected-actions";
+import CaseStepper from "./case-stepper";
+import ListActionButtons from "./list-action-buttons";
 
 type Props = {
 	stage: string;
@@ -38,7 +37,8 @@ export default function CaseStatusPanel({
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<DraftActions
+					<ListActionButtons
+						mode="draft"
 						number={number}
 						domainCount={domainCount}
 						invalidCount={invalidCount}
@@ -70,7 +70,8 @@ export default function CaseStatusPanel({
 								</p>
 							</div>
 						)}
-						<RejectedActions
+						<ListActionButtons
+							mode="rejected"
 							number={number}
 							domainCount={domainCount}
 							invalidCount={invalidCount}

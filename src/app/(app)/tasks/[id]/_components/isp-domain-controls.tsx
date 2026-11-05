@@ -3,19 +3,19 @@
 import { Check, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
 	setAllBlocked,
 	setDomainBlocked,
 	setDomainReason,
-} from "@/app/(app)/tasks/[id]/actions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from "../_actions/isp-actions";
 
 function report(result: { error?: string }) {
 	if (result.error) toast.error(result.error);
 }
 
-export function IspSelectAll({
+export function IspSelectAllControl({
 	taskId,
 	allBlocked,
 }: {

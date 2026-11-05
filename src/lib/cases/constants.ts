@@ -1,3 +1,5 @@
+export const EDITABLE_STAGES = ["draft", "initiator"];
+
 export const stageLabels: Record<string, string> = {
 	initiator: "La inițiator",
 	asp: "Validare ASP",
@@ -8,6 +10,25 @@ export const stageLabels: Record<string, string> = {
 	cancelled: "Anulat",
 };
 
+export type Tone =
+	| "slate"
+	| "blue"
+	| "violet"
+	| "teal"
+	| "amber"
+	| "green"
+	| "red";
+
+export const stageTones: Record<string, Tone> = {
+	initiator: "amber",
+	asp: "blue",
+	anr: "violet",
+	isp: "teal",
+	closed: "green",
+	draft: "slate",
+	cancelled: "slate",
+};
+
 export const ispStatuses = [
 	"queued",
 	"dispatched",
@@ -16,6 +37,7 @@ export const ispStatuses = [
 	"partial_failure",
 	"impossible",
 ];
+
 export const finalIspStatuses = ["completed", "partial_failure", "impossible"];
 
 export const ispStatusLabels: Record<string, string> = {
@@ -25,4 +47,13 @@ export const ispStatusLabels: Record<string, string> = {
 	completed: "Finalizat",
 	partial_failure: "Eșec parțial",
 	impossible: "Imposibil de executat",
+};
+
+export const ispTones: Record<string, Tone> = {
+	queued: "slate",
+	dispatched: "blue",
+	acknowledged: "violet",
+	completed: "green",
+	partial_failure: "amber",
+	impossible: "red",
 };

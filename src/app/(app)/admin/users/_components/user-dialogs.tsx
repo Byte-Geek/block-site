@@ -1,8 +1,6 @@
 "use client";
 
 import { Pencil, Plus } from "lucide-react";
-import { createUser, updateUser } from "@/app/(app)/admin/users/actions";
-import { Field } from "@/components/common/field";
 import FormDialog from "@/components/common/form-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,6 +11,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { createUser, updateUser } from "../_actions/user-actions";
+import { Field } from "./field";
 
 type RoleOption = { key: string; name: string };
 

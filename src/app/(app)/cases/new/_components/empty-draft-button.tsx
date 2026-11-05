@@ -2,9 +2,9 @@
 
 import { LoaderCircle, PencilLine } from "lucide-react";
 import { useActionState } from "react";
-import { createEmptyDraft } from "@/app/(app)/cases/new/actions";
 import { FormError } from "@/components/common/form-error";
 import { Button } from "@/components/ui/button";
+import { createEmptyDraft } from "../_actions/draft-actions";
 
 export default function EmptyDraftButton() {
 	const [state, action, pending] = useActionState(createEmptyDraft, {});

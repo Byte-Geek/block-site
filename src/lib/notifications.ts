@@ -1,6 +1,7 @@
-import { rolesWith } from "@/lib/auth/permissions";
+import { taskKeys } from "@/lib/flowable/task-keys";
+import { listCaseTasks } from "@/lib/flowable/tasks";
 import { prisma } from "@/lib/prisma";
-import { listCaseTasks } from "@/lib/workflow/tasks";
+import { rolesWith } from "@/lib/rbac/permissions";
 
 export async function notify(
 	caseId: string,
@@ -36,7 +37,7 @@ export async function notifyIspTasks(c: {
 		const users = [
 			...new Set(
 				tasks
-					.filter((t) => t.taskDefinitionKey === "ispTask")
+					.filter((t) => t.taskDefinitionKey === taskKeys.isp)
 					.map((t) => t.assignee ?? t.candidateUser)
 					.filter((v): v is string => Boolean(v)),
 			),

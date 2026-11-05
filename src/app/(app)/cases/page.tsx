@@ -17,12 +17,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { can } from "@/lib/auth/permissions";
-import { requireCaseAccess } from "@/lib/cases/access";
-import { stageLabels } from "@/lib/cases/constants";
-import { countByStage } from "@/lib/cases/stats";
+import { countByStage } from "@/lib/cases/case-stats";
+import { EDITABLE_STAGES, stageLabels } from "@/lib/cases/constants";
 import { formatDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { requireCaseAccess } from "@/lib/rbac/case-access";
+import { can } from "@/lib/rbac/permissions";
 
 const SIZE = 20;
 const stageOrder = [
@@ -201,8 +201,7 @@ export default async function CasesPage({ searchParams }: Props) {
 							<TableBody>
 								{cases.map((c) => {
 									const actionable =
-										isInitiator &&
-										(c.stage === "initiator" || c.stage === "draft");
+										isInitiator && EDITABLE_STAGES.includes(c.stage);
 									return (
 										<TableRow key={c.id}>
 											<TableCell className="font-medium">

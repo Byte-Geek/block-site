@@ -16,7 +16,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { formatDateTime, formatSize } from "@/lib/format";
-import FileUploadForm from "./file-upload-form";
+import AttachmentUploadForm from "./attachment-upload-form";
 
 type Props = {
 	number: number;
@@ -56,7 +56,7 @@ export default function FilesTab({ number, canWrite, files, nameOf }: Props) {
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-6">
-				{canWrite && <FileUploadForm number={number} />}
+				{canWrite && <AttachmentUploadForm number={number} />}
 
 				{rows.length > 0 && (
 					<div className="overflow-hidden rounded-lg border">

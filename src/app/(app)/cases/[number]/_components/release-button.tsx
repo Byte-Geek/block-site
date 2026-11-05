@@ -1,9 +1,8 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
-import { useActionState, useState } from "react";
-import { toast } from "sonner";
-import { releaseTask } from "@/app/(app)/tasks/[id]/actions";
+import { useState } from "react";
+import { releaseTask } from "@/actions/task-assignment-actions";
 import { FormError } from "@/components/common/form-error";
 import {
 	AlertDialog,
@@ -16,8 +15,8 @@ import {
 	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { useActionWithToast } from "@/hooks/use-action-with-toast";
 
-type State = { error?: string; ok?: string };
 type Props = { taskId: string; assigneeName: string };
 
 function ReleaseForm({
@@ -25,17 +24,7 @@ function ReleaseForm({
 	assigneeName,
 	onDone,
 }: Props & { onDone: () => void }) {
-	const [state, action, pending] = useActionState(
-		async (prev: State, data: FormData) => {
-			const result = await releaseTask(prev, data);
-			if (result.ok) {
-				toast.success(result.ok);
-				onDone();
-			}
-			return result;
-		},
-		{} as State,
-	);
+	const [state, action, pending] = useActionWithToast(releaseTask, onDone);
 
 	return (
 		<form action={action} className="flex flex-col gap-4">

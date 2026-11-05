@@ -19,9 +19,11 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { domainProblem } from "@/lib/cases/domains";
+import { domainProblem } from "@/lib/cases/domain-format";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES } from "@/lib/pagination";
-import { AddDomainRow, BulkAddDialog, DomainRow } from "./domain-controls";
+import AddDomainRow from "./add-domain-row";
+import BulkAddDomainsDialog from "./bulk-add-domains-dialog";
+import DomainRow from "./domain-row";
 
 type DupInfo = { number: number; stage: string; own: boolean };
 
@@ -108,7 +110,7 @@ export default function EditableDomainsTable({
 								Caută
 							</Button>
 						</Form>
-						<BulkAddDialog number={number} />
+						<BulkAddDomainsDialog number={number} />
 					</div>
 				</div>
 			</CardHeader>

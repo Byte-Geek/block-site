@@ -7,9 +7,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { requirePermission } from "@/lib/auth/require-permission";
 import { formatDateTime } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/rbac/require-permission";
 import UploadProcessForm from "./_components/upload-process-form";
 
 export default async function ProcessPage() {

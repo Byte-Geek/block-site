@@ -12,10 +12,10 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { auth } from "@/lib/auth/auth";
-import { isAdmin, processRoles, roleLabels } from "@/lib/auth/permissions";
-import { requirePermission } from "@/lib/auth/require-permission";
+import { isAdmin, processRoles, roleLabels } from "@/lib/rbac/permissions";
+import { requirePermission } from "@/lib/rbac/require-permission";
+import { deleteUser } from "./_actions/user-actions";
 import { CreateUserDialog, EditUserDialog } from "./_components/user-dialogs";
-import { deleteUser } from "./actions";
 
 export default async function UsersPage() {
 	await requirePermission("user", "list");

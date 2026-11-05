@@ -7,13 +7,14 @@ import {
 	TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
-import DomainSearch from "@/components/cases/domain-search";
-import RecentCases from "@/components/cases/recent-cases";
-import StatCard from "@/components/common/stat-card";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
-import { countByStage } from "@/lib/cases/stats";
+import { countByStage } from "@/lib/cases/case-stats";
 import { prisma } from "@/lib/prisma";
+import { type Role, roleLabels } from "@/lib/rbac/permissions";
+import DomainSearch from "./domain-search";
+import RecentCases from "./recent-cases";
+import StatCard from "./stat-card";
 
 type Props = { user: { id: string; name: string }; d: string };
 
@@ -144,7 +145,7 @@ export default async function InitiatorDashboard({ user, d }: Props) {
 									fileName={c.fileName}
 									detail={
 										r
-											? `Respins de ${r.stage === "asp" ? "ASP" : "ANRCETI"}${r.text ? `: ${r.text}` : ""}`
+											? `Respins de ${roleLabels[r.stage as Role]}${r.text ? `: ${r.text}` : ""}`
 											: "Respins"
 									}
 									action="Corectează"

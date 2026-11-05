@@ -1,38 +1,35 @@
-import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import CaseReport from "@/components/cases/case-report";
-import CaseTabs, { type CaseTab } from "@/components/cases/case-tabs";
 import DomainsTable from "@/components/cases/domains-table";
-import IspStatusCard from "@/components/cases/isp-status-card";
 import FlashToast from "@/components/common/flash-toast";
 import { StageBadge } from "@/components/common/status-badge";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
-import { Button } from "@/components/ui/button";
-import { can } from "@/lib/auth/permissions";
-import { requireCaseAccess } from "@/lib/cases/access";
-import { getDomainsPage } from "@/lib/cases/domain-page";
-import { domainProblem } from "@/lib/cases/domains";
-import { duplicatesByDomain } from "@/lib/cases/duplicates";
-import { parseCaseNumber } from "@/lib/cases/number";
-import { formatDateTime } from "@/lib/format";
-import { pageSizeFrom } from "@/lib/pagination";
-import { prisma } from "@/lib/prisma";
-import { findOpenTask, listCaseTasks } from "@/lib/workflow/tasks";
-import CaseDetailsCard from "./_components/case-details-card";
-import CaseStatusPanel from "./_components/case-status-panel";
-import CaseTasksCard from "./_components/case-tasks-card";
-import EditableDomainsTable from "./_components/editable-domains-table";
-import FilesTab from "./_components/files-tab";
-import HistoryTab from "./_components/history-tab";
-import NotesTab from "./_components/notes-tab";
-import OpenTaskBanner from "./_components/open-task-banner";
 import {
 	buildEvents,
 	buildIspParticipants,
 	latestRejection,
-} from "./_actions/history";
-import { getCaseReport } from "./_actions/report";
+} from "@/lib/cases/case-history";
+import { parseCaseNumber } from "@/lib/cases/case-number";
+import { getCaseReport } from "@/lib/cases/case-report";
+import { EDITABLE_STAGES } from "@/lib/cases/constants";
+import { getDomainsPage, getEditableDomains } from "@/lib/cases/domain-queries";
+import { taskKeys } from "@/lib/flowable/task-keys";
+import { findOpenTask, listCaseTasks } from "@/lib/flowable/tasks";
+import { formatDateTime } from "@/lib/format";
+import { pageSizeFrom } from "@/lib/pagination";
+import { prisma } from "@/lib/prisma";
+import { requireCaseAccess } from "@/lib/rbac/case-access";
+import { can } from "@/lib/rbac/permissions";
+import CaseDetailsCard from "./_components/case-details-card";
+import CaseReport from "./_components/case-report";
+import CaseStatusPanel from "./_components/case-status-panel";
+import CaseTabs, { type CaseTab } from "./_components/case-tabs";
+import CaseTasksCard from "./_components/case-tasks-card";
+import EditableDomainsTable from "./_components/editable-domains-table";
+import FilesTab from "./_components/files-tab";
+import HistoryTab from "./_components/history-tab";
+import IspStatusCard from "./_components/isp-status-card";
+import NotesTab from "./_components/notes-tab";
+import OpenTaskBanner from "./_components/open-task-banner";
 
 type Props = {
 	params: Promise<{ number: string }>;
@@ -84,8 +81,8 @@ export default async function CasePage({ params, searchParams }: Props) {
 	if (!c) notFound();
 
 	const isInitiator = can(user.role, "case", "create");
-	const isEditable =
-		isInitiator && (c.stage === "draft" || c.stage === "initiator");
+	const isEditable = isInitiator && EDITABLE_STAGES.includes(c.stage);
+	const isOpen = c.stage !== "cancelled";
 	const showTasks = can(user.role, "case", "readAll");
 	const caseTasks = showTasks ? await listCaseTasks(c.processInstanceId) : [];
 
@@ -111,9 +108,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 		...c.comments.map((x) => x.userId),
 		...c.ispResponses.map((x) => x.userId),
 		...caseTasks.flatMap((t) =>
-			[t.assignee, t.candidateUser].filter((v): v is string =>
-				Boolean(v),
-			),
+			[t.assignee, t.candidateUser].filter((v): v is string => Boolean(v)),
 		),
 	];
 	const [users, openTask] = await Promise.all([
@@ -141,20 +136,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 			? "descriere"
 			: (requestedTab ?? (report ? "raport" : "descriere"));
 
-	const editable = isEditable
-		? await (async () => {
-				const rows = await prisma.caseDomain.findMany({
-					where: { caseId: c.id },
-					orderBy: { position: "asc" },
-					select: { id: true, position: true, value: true },
-				});
-				const duplicates = await duplicatesByDomain(c.id, user.id);
-				const invalidCount = rows.filter(
-					(r) => domainProblem(r.value) || duplicates[r.value],
-				).length;
-				return { rows, duplicates, invalidCount };
-			})()
-		: null;
+	const editable = isEditable ? await getEditableDomains(c.id, user.id) : null;
 	const domainsPage = isEditable
 		? null
 		: await getDomainsPage(c.id, {
@@ -168,7 +150,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 		name: t.name,
 		status: t.assignee
 			? `Preluată de ${nameOf(t.assignee)}`
-			: t.taskDefinitionKey === "trimitere"
+			: t.taskDefinitionKey === taskKeys.initiator
 				? "Așteaptă inițiatorul să retrimită lista"
 				: t.candidateUser
 					? `Liberă, așteaptă ${nameOf(t.candidateUser)}`
@@ -193,19 +175,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 			<FlashToast ok={ok} detail={flashDetail} />
 
 			<PageHeader
-				back={
-					<Button
-						asChild
-						variant="ghost"
-						size="sm"
-						className="-ml-2 w-fit"
-					>
-						<Link href="/cases">
-							<ChevronLeft />
-							Cazuri
-						</Link>
-					</Button>
-				}
+				back={{ href: "/cases", label: "Cazuri" }}
 				title={`Caz #${c.number}`}
 				description={
 					c.stage === "draft"
@@ -233,14 +203,12 @@ export default async function CasePage({ params, searchParams }: Props) {
 				/>
 			)}
 
-			{tab === "istoric" && (
-				<HistoryTab events={events} branches={branches} />
-			)}
+			{tab === "istoric" && <HistoryTab events={events} branches={branches} />}
 
 			{tab === "comentarii" && (
 				<NotesTab
 					number={c.number}
-					canWrite={c.stage !== "cancelled"}
+					canWrite={isOpen && can(user.role, "note", "create")}
 					notes={notes}
 					nameOf={nameOf}
 				/>
@@ -249,7 +217,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 			{tab === "fisiere" && (
 				<FilesTab
 					number={c.number}
-					canWrite={c.stage !== "cancelled"}
+					canWrite={isOpen && can(user.role, "file", "upload")}
 					files={files}
 					nameOf={nameOf}
 				/>
@@ -263,9 +231,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 						number={c.number}
 						domainCount={c._count.domains}
 						invalidCount={editable?.invalidCount ?? 0}
-						rejection={
-							isInitiator ? latestRejection(c.comments) : null
-						}
+						rejection={isInitiator ? latestRejection(c.comments) : null}
 					/>
 
 					<div className="grid gap-6 lg:grid-cols-[1fr_22rem] lg:items-start">
@@ -283,11 +249,7 @@ export default async function CasePage({ params, searchParams }: Props) {
 								/>
 							) : (
 								domainsPage && (
-									<DomainsTable
-										{...domainsPage}
-										q={q}
-										basePath={basePath}
-									/>
+									<DomainsTable {...domainsPage} q={q} basePath={basePath} />
 								)
 							)}
 						</div>
@@ -302,19 +264,12 @@ export default async function CasePage({ params, searchParams }: Props) {
 							{taskRows.length > 0 && (
 								<CaseTasksCard
 									rows={taskRows}
-									canRelease={can(
-										user.role,
-										"task",
-										"release",
-									)}
+									canRelease={can(user.role, "task", "release")}
 								/>
 							)}
 
 							{ispItems.length > 0 && (
-								<IspStatusCard
-									items={ispItems}
-									closed={c.stage === "closed"}
-								/>
+								<IspStatusCard items={ispItems} closed={c.stage === "closed"} />
 							)}
 						</div>
 					</div>

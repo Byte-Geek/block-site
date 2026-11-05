@@ -1,23 +1,18 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
-import { useActionState, useEffect, useRef } from "react";
-import { toast } from "sonner";
-import { addNote } from "@/app/(app)/cases/[number]/_actions/tab-actions";
+import { useRef } from "react";
 import { FormError } from "@/components/common/form-error";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useActionWithToast } from "@/hooks/use-action-with-toast";
+import { addNote } from "../_actions/note-actions";
 
 export default function NoteForm({ number }: { number: number }) {
-	const [state, action, pending] = useActionState(addNote, {});
 	const ref = useRef<HTMLFormElement>(null);
-
-	useEffect(() => {
-		if (state.ok) {
-			toast.success(state.ok);
-			ref.current?.reset();
-		}
-	}, [state]);
+	const [state, action, pending] = useActionWithToast(addNote, () =>
+		ref.current?.reset(),
+	);
 
 	return (
 		<form ref={ref} action={action} className="flex flex-col gap-3">

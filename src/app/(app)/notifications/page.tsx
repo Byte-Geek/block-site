@@ -1,12 +1,13 @@
 import { Bell, CheckCheck, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import EmptyState from "@/components/common/empty-state";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
-import { requireUser } from "@/lib/auth/current-user";
+import { requireUser } from "@/lib/auth/session";
 import { formatDateTime } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { cn } from "@/lib/utils";
-import { markAllRead } from "./actions";
+import { markAllRead } from "./_actions/notification-actions";
 
 export default async function NotificationsPage() {
 	const user = await requireUser();
@@ -45,15 +46,9 @@ export default async function NotificationsPage() {
 			/>
 
 			{items.length === 0 ? (
-				<div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-12 text-center">
-					<div className="flex size-10 items-center justify-center rounded-full bg-muted">
-						<Bell className="size-5 text-muted-foreground" />
-					</div>
-					<p className="font-medium">Nu ai notificări</p>
-					<p className="max-w-sm text-sm text-muted-foreground">
-						Vei fi anunțat aici când un caz are nevoie de atenția ta.
-					</p>
-				</div>
+				<EmptyState icon={Bell} title="Nu ai notificări">
+					Vei fi anunțat aici când un caz are nevoie de atenția ta.
+				</EmptyState>
 			) : (
 				<>
 					<ul className="divide-y overflow-hidden rounded-xl border bg-card">

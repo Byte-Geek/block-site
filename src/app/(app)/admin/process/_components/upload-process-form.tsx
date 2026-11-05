@@ -1,8 +1,6 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
-import { startTransition, useActionState, useEffect, useState } from "react";
-import { toast } from "sonner";
 import FileDropzone from "@/components/common/file-dropzone";
 import { FormError } from "@/components/common/form-error";
 import {
@@ -17,25 +15,11 @@ import {
 	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { uploadProcess } from "../actions";
+import { useFileForm } from "@/hooks/use-file-form";
+import { uploadProcess } from "../_actions/process-actions";
 
 export default function UploadProcessForm() {
-	const [state, action, pending] = useActionState(uploadProcess, {});
-	const [file, setFile] = useState<File | null>(null);
-
-	useEffect(() => {
-		if (state.ok) {
-			toast.success(state.ok);
-			setFile(null);
-		}
-	}, [state]);
-
-	function submit() {
-		if (!file) return;
-		const data = new FormData();
-		data.set("file", file);
-		startTransition(() => action(data));
-	}
+	const { file, setFile, state, pending, submit } = useFileForm(uploadProcess);
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -43,8 +27,7 @@ export default function UploadProcessForm() {
 				id="process-file"
 				file={file}
 				onFile={setFile}
-				accept=".xml,.bpmn"
-				hint="Fișier .bpmn20.xml sau .bpmn"
+				extensions={[".xml", ".bpmn"]}
 			/>
 
 			<FormError>{state.error}</FormError>

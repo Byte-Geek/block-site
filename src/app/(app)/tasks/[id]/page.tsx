@@ -1,11 +1,7 @@
-import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import DomainsTable from "@/components/cases/domains-table";
-import NotesPreview from "@/components/cases/notes-preview";
 import { IspStatusBadge, StageBadge } from "@/components/common/status-badge";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
-import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -14,23 +10,24 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { requireUser } from "@/lib/auth/current-user";
-import { can } from "@/lib/auth/permissions";
-import { getDomainsPage } from "@/lib/cases/domain-page";
+import { requireUser } from "@/lib/auth/session";
+import { getDomainsPage } from "@/lib/cases/domain-queries";
+import { getIspProgress } from "@/lib/cases/isp-progress";
+import { stageByTaskKey } from "@/lib/flowable/task-keys";
+import { getTaskForUser } from "@/lib/flowable/tasks";
 import { formatDateTime } from "@/lib/format";
 import { pageSizeFrom } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
-import { stageByTaskKey } from "@/lib/workflow/stages";
-import { getTaskForUser } from "@/lib/workflow/tasks";
-import ClaimBar from "./_components/claim-bar";
+import { can } from "@/lib/rbac/permissions";
+import CaseNotesCard from "./_components/case-notes-card";
 import DecisionForm from "./_components/decision-form";
 import {
 	IspDomainControl,
-	IspSelectAll,
+	IspSelectAllControl,
 } from "./_components/isp-domain-controls";
-import IspFinish from "./_components/isp-finish";
-import IspForm from "./_components/isp-form";
-import { getIspProgress } from "./_components/isp-progress";
+import IspFinishForm from "./_components/isp-finish-form";
+import IspStatusForm from "./_components/isp-status-form";
+import TaskAssignmentCard from "./_components/task-assignment-card";
 
 type Props = {
 	params: Promise<{ id: string }>;
@@ -84,14 +81,7 @@ export default async function TaskPage({ params, searchParams }: Props) {
 	return (
 		<PageShell>
 			<PageHeader
-				back={
-					<Button asChild variant="ghost" size="sm" className="-ml-2 w-fit">
-						<Link href="/tasks">
-							<ChevronLeft />
-							Sarcini
-						</Link>
-					</Button>
-				}
+				back={{ href: "/tasks", label: "Sarcini" }}
 				title={
 					<>
 						{task.name}{" "}
@@ -114,7 +104,7 @@ export default async function TaskPage({ params, searchParams }: Props) {
 							progress
 								? {
 										head: (
-											<IspSelectAll
+											<IspSelectAllControl
 												taskId={task.id}
 												allBlocked={progress.blocked === progress.total}
 											/>
@@ -140,14 +130,14 @@ export default async function TaskPage({ params, searchParams }: Props) {
 				</div>
 
 				<div className="order-first flex flex-col gap-4 lg:sticky lg:top-6 lg:order-last">
-					<NotesPreview
+					<CaseNotesCard
 						number={c.number}
 						notes={notes}
 						nameOf={(id) => names.get(id) ?? id}
 					/>
 
 					{can(user.role, "task", "claim") && (
-						<ClaimBar taskId={task.id} mine={mine} />
+						<TaskAssignmentCard taskId={task.id} mine={mine} />
 					)}
 
 					{mine && can(user.role, "task", "decide") && (
@@ -185,14 +175,14 @@ export default async function TaskPage({ params, searchParams }: Props) {
 									<IspStatusBadge status={last?.status ?? null} />
 								</div>
 								<Separator />
-								<IspFinish
+								<IspFinishForm
 									taskId={task.id}
 									total={progress.total}
 									blocked={progress.blocked}
 									withReason={progress.withReason}
 								/>
 								<Separator />
-								<IspForm
+								<IspStatusForm
 									taskId={task.id}
 									initialStatus={last?.status ?? "queued"}
 								/>

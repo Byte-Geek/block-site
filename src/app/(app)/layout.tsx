@@ -5,9 +5,9 @@ import AppSidebar from "@/components/layout/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { requireUser } from "@/lib/auth/current-user";
-import { can, isAdmin, type Role, roleLabels } from "@/lib/auth/permissions";
+import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { can, isAdmin, type Role, roleLabels } from "@/lib/rbac/permissions";
 
 async function Shell({ children }: { children: ReactNode }) {
 	const user = await requireUser();

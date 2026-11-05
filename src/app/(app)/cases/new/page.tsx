@@ -1,7 +1,4 @@
-import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
-import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -9,9 +6,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { requirePermission } from "@/lib/auth/require-permission";
+import { requirePermission } from "@/lib/rbac/require-permission";
 import EmptyDraftButton from "./_components/empty-draft-button";
-import UploadForm from "./_components/upload-form";
+import UploadListForm from "./_components/upload-list-form";
 
 export default async function NewCasePage() {
 	await requirePermission("case", "create");
@@ -19,14 +16,7 @@ export default async function NewCasePage() {
 	return (
 		<PageShell className="max-w-4xl">
 			<PageHeader
-				back={
-					<Button asChild variant="ghost" size="sm" className="-ml-2 w-fit">
-						<Link href="/cases">
-							<ChevronLeft />
-							Cazuri
-						</Link>
-					</Button>
-				}
+				back={{ href: "/cases", label: "Cazuri" }}
 				title="Listă nouă"
 				description="Începe cu un fișier sau direct în platformă. Nimic nu se trimite până nu verifici lista și apeși Trimite."
 			/>
@@ -40,7 +30,7 @@ export default async function NewCasePage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<UploadForm />
+						<UploadListForm />
 					</CardContent>
 				</Card>
 

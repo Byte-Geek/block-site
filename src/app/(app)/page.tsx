@@ -6,17 +6,17 @@ import {
 	ListChecks,
 	Users,
 } from "lucide-react";
-import DomainSearch from "@/components/cases/domain-search";
-import RecentCases from "@/components/cases/recent-cases";
-import StatCard from "@/components/common/stat-card";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
-import { requireUser } from "@/lib/auth/current-user";
-import { can, isAdmin } from "@/lib/auth/permissions";
-import { caseAccess } from "@/lib/cases/access";
-import { countByStage } from "@/lib/cases/stats";
+import { requireUser } from "@/lib/auth/session";
+import { countByStage } from "@/lib/cases/case-stats";
+import { listTasksForUser } from "@/lib/flowable/tasks";
 import { prisma } from "@/lib/prisma";
-import { listTasksForUser } from "@/lib/workflow/tasks";
+import { caseAccess } from "@/lib/rbac/case-access";
+import { can, isAdmin } from "@/lib/rbac/permissions";
+import DomainSearch from "./_components/domain-search";
 import InitiatorDashboard from "./_components/initiator-dashboard";
+import RecentCases from "./_components/recent-cases";
+import StatCard from "./_components/stat-card";
 
 const roleText: Record<string, string> = {
 	asp: "Validează listele care ajung la ASP.",

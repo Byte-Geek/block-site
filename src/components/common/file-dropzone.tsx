@@ -2,31 +2,28 @@
 
 import { FileText, Upload, X } from "lucide-react";
 import { useState } from "react";
+import { FormError } from "@/components/common/form-error";
 import { Button } from "@/components/ui/button";
+import { formatSize } from "@/lib/format";
+import { fileProblem, MAX_FILE_SIZE_LABEL } from "@/lib/storage/file-rules";
 import { cn } from "@/lib/utils";
 
 type Props = {
 	id: string;
 	file: File | null;
 	onFile: (file: File | null) => void;
-	accept: string;
-	hint: string;
+	extensions: string[];
 };
 
-function formatSize(bytes: number) {
-	return bytes < 1024 * 1024
-		? `${Math.max(1, Math.round(bytes / 1024))} KB`
-		: `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-export default function FileDropzone({
-	id,
-	file,
-	onFile,
-	accept,
-	hint,
-}: Props) {
+export default function FileDropzone({ id, file, onFile, extensions }: Props) {
 	const [dragging, setDragging] = useState(false);
+	const [problem, setProblem] = useState<string | null>(null);
+
+	function select(selected: File | null) {
+		const error = selected ? fileProblem(selected, extensions) : null;
+		setProblem(error);
+		onFile(error ? null : selected);
+	}
 
 	return (
 		<div className="flex flex-col gap-3">
@@ -40,7 +37,7 @@ export default function FileDropzone({
 				onDrop={(e) => {
 					e.preventDefault();
 					setDragging(false);
-					onFile(e.dataTransfer.files[0] ?? null);
+					select(e.dataTransfer.files[0] ?? null);
 				}}
 				className={cn(
 					"flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed p-8 text-center transition-colors hover:bg-muted/50",
@@ -51,15 +48,22 @@ export default function FileDropzone({
 					<Upload className="size-5 text-muted-foreground" />
 				</div>
 				<p className="font-medium">Trage fișierul aici sau apasă ca să alegi</p>
-				<p className="text-sm text-muted-foreground">{hint}</p>
+				<p className="text-sm text-muted-foreground">
+					Format {extensions.join(", ")} · maximum {MAX_FILE_SIZE_LABEL}
+				</p>
 				<input
 					id={id}
 					type="file"
-					accept={accept}
+					accept={extensions.join(",")}
 					className="sr-only"
-					onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+					onChange={(e) => {
+						select(e.target.files?.[0] ?? null);
+						e.target.value = "";
+					}}
 				/>
 			</label>
+
+			<FormError>{problem}</FormError>
 
 			{file && (
 				<div className="flex items-center gap-3 rounded-lg border p-3">

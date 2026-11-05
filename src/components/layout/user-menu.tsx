@@ -2,6 +2,7 @@
 
 import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
+import UserAvatar from "@/components/layout/user-avatar";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -11,20 +12,9 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { authClient } from "@/lib/auth/client";
+import { authClient } from "@/lib/auth/auth-client";
 
 type Props = { name: string; email: string; roleLabel: string };
-
-function initials(name: string) {
-	return (
-		name
-			.split(/\s+/)
-			.filter(Boolean)
-			.slice(0, 2)
-			.map((part) => part[0]?.toUpperCase())
-			.join("") || "?"
-	);
-}
 
 export default function UserMenu({ name, email, roleLabel }: Props) {
 	const router = useRouter();
@@ -38,9 +28,10 @@ export default function UserMenu({ name, email, roleLabel }: Props) {
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<Button variant="ghost" className="h-9 gap-2 px-2">
-					<span className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-						{initials(name)}
-					</span>
+					<UserAvatar
+						name={name}
+						className="size-7 bg-primary text-primary-foreground"
+					/>
 					<span className="hidden text-sm sm:inline">{name}</span>
 				</Button>
 			</DropdownMenuTrigger>
