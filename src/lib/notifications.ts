@@ -1,19 +1,21 @@
+import { rolesWith } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
 import { listCaseTasks } from "@/lib/workflow/tasks";
 
 export async function notify(
 	caseId: string,
 	text: string,
-	to: { groups?: string[]; users?: string[] },
+	to: { roles?: string[]; users?: string[] },
 ) {
 	try {
-		const members = to.groups?.length
-			? await prisma.membership.findMany({
-					where: { groupKey: { in: to.groups } },
+		const members = to.roles?.length
+			? await prisma.user.findMany({
+					where: { role: { in: to.roles } },
+					select: { id: true },
 				})
 			: [];
 		const ids = [
-			...new Set([...(to.users ?? []), ...members.map((m) => m.userId)]),
+			...new Set([...(to.users ?? []), ...members.map((m) => m.id)]),
 		];
 		if (ids.length === 0) return;
 		await prisma.notification.createMany({
@@ -42,7 +44,7 @@ export async function notifyIspTasks(c: {
 
 		if (users.length === 0) {
 			await notify(c.id, `Caz #${c.number}: așteaptă blocarea de către ISP`, {
-				groups: ["isp"],
+				roles: rolesWith("task", "execute"),
 			});
 			return;
 		}

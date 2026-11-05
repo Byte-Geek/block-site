@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireGroup } from "@/lib/auth/require-group";
+import { rolesWith } from "@/lib/auth/permissions";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { domainProblem, parseDomains } from "@/lib/cases/domains";
 import { findDuplicates } from "@/lib/cases/duplicates";
 import { parseCaseNumber } from "@/lib/cases/number";
@@ -30,7 +31,7 @@ export async function sendDraft(
 	_prev: State,
 	formData: FormData,
 ): Promise<State> {
-	const user = await requireGroup("initiator");
+	const user = await requirePermission("case", "create");
 
 	const number = parseCaseNumber(formData.get("number"));
 	if (!number) return { error: "Caz invalid" };
@@ -50,11 +51,12 @@ export async function sendDraft(
 			error: `${invalid} domenii au probleme (invalide sau existente deja în alte cazuri). Corectează-le sau șterge-le înainte să trimiți.`,
 		};
 
-	const ispMembers = await prisma.membership.findMany({
-		where: { groupKey: "isp" },
+	const ispMembers = await prisma.user.findMany({
+		where: { role: { in: rolesWith("task", "execute") } },
+		select: { id: true },
 	});
 	if (ispMembers.length === 0)
-		return { error: "Nu există utilizatori în grupul ISP" };
+		return { error: "Nu există utilizatori cu rolul ISP" };
 
 	const claimed = await prisma.case.updateMany({
 		where: { id: c.id, stage: "draft" },
@@ -70,7 +72,7 @@ export async function sendDraft(
 				{
 					name: "ispUsers",
 					type: "json",
-					value: ispMembers.map((m) => m.userId),
+					value: ispMembers.map((m) => m.id),
 				},
 			],
 		})) as { id: string };
@@ -117,7 +119,7 @@ export async function sendDraft(
 	}
 
 	await notify(c.id, `Caz nou #${c.number}: lista așteaptă validarea ASP`, {
-		groups: ["asp"],
+		roles: ["asp"],
 	});
 
 	revalidatePath("/cases");
@@ -128,7 +130,7 @@ export async function cancelDraft(
 	_prev: State,
 	formData: FormData,
 ): Promise<State> {
-	const user = await requireGroup("initiator");
+	const user = await requirePermission("case", "create");
 
 	const number = parseCaseNumber(formData.get("number"));
 	if (!number) return { error: "Caz invalid" };
@@ -152,7 +154,7 @@ export async function resubmitCase(
 	_prev: State,
 	formData: FormData,
 ): Promise<State> {
-	const user = await requireGroup("initiator");
+	const user = await requirePermission("case", "create");
 
 	const number = parseCaseNumber(formData.get("number"));
 	if (!number) return { error: "Caz invalid" };
@@ -210,7 +212,7 @@ export async function resubmitCase(
 	await notify(
 		c.id,
 		`Caz #${c.number}: lista a fost retrimisă, așteaptă validarea ASP`,
-		{ groups: ["asp"] },
+		{ roles: ["asp"] },
 	);
 
 	revalidatePath("/cases");
@@ -221,7 +223,7 @@ export async function replaceFromFile(
 	_prev: State,
 	formData: FormData,
 ): Promise<State> {
-	const user = await requireGroup("initiator");
+	const user = await requirePermission("case", "create");
 
 	const number = parseCaseNumber(formData.get("number"));
 	if (!number) return { error: "Caz invalid" };
@@ -294,7 +296,7 @@ export async function cancelCase(
 	_prev: State,
 	formData: FormData,
 ): Promise<State> {
-	const user = await requireGroup("initiator");
+	const user = await requirePermission("case", "create");
 
 	const number = parseCaseNumber(formData.get("number"));
 	if (!number) return { error: "Caz invalid" };

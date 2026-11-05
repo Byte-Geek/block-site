@@ -9,7 +9,6 @@ import {
 	type LucideIcon,
 	ShieldBan,
 	Users,
-	UsersRound,
 	Workflow,
 } from "lucide-react";
 import Link from "next/link";
@@ -65,7 +64,6 @@ const adminSections: NavSection[] = [
 		label: "Administrare",
 		items: [
 			{ href: "/admin/users", label: "Utilizatori", icon: Users },
-			{ href: "/admin/groups", label: "Grupuri", icon: UsersRound },
 			{
 				href: "/admin/process",
 				label: "Schema procesului",

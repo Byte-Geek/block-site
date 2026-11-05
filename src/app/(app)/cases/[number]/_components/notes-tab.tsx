@@ -35,12 +35,12 @@ export default function NotesTab({ number, canWrite, notes, nameOf }: Props) {
 								className="grid gap-1 p-4 sm:grid-cols-[14rem_1fr] sm:gap-4"
 							>
 								<div className="text-sm">
-									<p className="font-medium wrap-break-word">{nameOf(n.userId)}</p>
+									<p className="font-medium break-words">{nameOf(n.userId)}</p>
 									<p className="text-xs text-muted-foreground">
 										{formatDateTime(n.createdAt)}
 									</p>
 								</div>
-								<p className="text-sm wrap-break-word whitespace-pre-wrap">
+								<p className="text-sm break-words whitespace-pre-wrap">
 									{n.text}
 								</p>
 							</li>

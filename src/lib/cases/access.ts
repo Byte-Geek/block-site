@@ -1,23 +1,16 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/current-user";
+import { can } from "@/lib/auth/permissions";
 import type { Prisma } from "../../../generated/prisma/client";
 
-export function caseAccess(user: {
-	id: string;
-	role?: string | null;
-	group: string | null;
-}) {
-	const group = user.group;
-	const notDraft = { stage: { not: "draft" } };
-
+export function caseAccess(user: { id: string; role?: string | null }) {
 	let where: Prisma.CaseWhereInput | null = null;
-	if (user.role === "admin") where = notDraft;
-	else if (group === "initiator") where = { createdById: user.id };
-	else if (group === "asp" || group === "anr") where = notDraft;
-	else if (group === "isp")
+	if (can(user.role, "case", "readAll")) where = { stage: { not: "draft" } };
+	else if (can(user.role, "case", "readOwn")) where = { createdById: user.id };
+	else if (can(user.role, "case", "readApproved"))
 		where = { comments: { some: { stage: "anr", decision: "da" } } };
 
-	return where ? { where, group } : null;
+	return where ? { where } : null;
 }
 
 export async function requireCaseAccess() {

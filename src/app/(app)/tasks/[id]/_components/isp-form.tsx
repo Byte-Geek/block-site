@@ -3,6 +3,7 @@
 import { LoaderCircle } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { setIspStatus } from "@/app/(app)/tasks/[id]/actions";
 import { FormError } from "@/components/common/form-error";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -19,7 +20,6 @@ import {
 	ispStatuses,
 	ispStatusLabels,
 } from "@/lib/cases/constants";
-import { setIspStatus } from "../actions";
 
 type Props = { taskId: string; initialStatus: string };
 

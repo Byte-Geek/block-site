@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-export type CaseTab = "raport" | "descriere" | "comentarii" | "fisiere";
+export type CaseTab =
+	| "raport"
+	| "descriere"
+	| "istoric"
+	| "comentarii"
+	| "fisiere";
 
 type Props = {
 	basePath: string;
@@ -19,6 +24,7 @@ export default function CaseTabs({
 	const tabs: { key: CaseTab; label: string; count?: number }[] = [
 		...(hasReport ? [{ key: "raport" as const, label: "Raport" }] : []),
 		{ key: "descriere", label: "Descriere" },
+		{ key: "istoric", label: "Istoric" },
 		{ key: "comentarii", label: "Comentarii", count: counts.comentarii },
 		{ key: "fisiere", label: "Fișiere", count: counts.fisiere },
 	];

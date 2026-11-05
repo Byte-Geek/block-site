@@ -96,7 +96,7 @@ export function IspDomainControl({ taskId, domainId, blocked, reason }: Props) {
 			</div>
 
 			{!blocked && reason && !editing && (
-				<p className="text-xs wrap-break-word text-amber-700">{reason}</p>
+				<p className="text-xs break-words text-amber-700">{reason}</p>
 			)}
 
 			{editing && (

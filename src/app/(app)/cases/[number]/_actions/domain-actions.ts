@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireGroup } from "@/lib/auth/require-group";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { domainProblem, normalizeDomain } from "@/lib/cases/domains";
 import { parseCaseNumber } from "@/lib/cases/number";
 import { prisma } from "@/lib/prisma";
@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 type State = { error?: string; ok?: string; details?: string[] };
 
 async function editableCase(formData: FormData) {
-	const user = await requireGroup("initiator");
+	const user = await requirePermission("case", "create");
 	const number = parseCaseNumber(formData.get("number"));
 	if (!number) return null;
 

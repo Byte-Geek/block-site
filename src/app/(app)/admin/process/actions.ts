@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { prisma } from "@/lib/prisma";
 import { flowableDeploy } from "@/lib/workflow/flowable";
 
@@ -11,7 +11,7 @@ export async function uploadProcess(
 	_prev: State,
 	formData: FormData,
 ): Promise<State> {
-	await requireAdmin();
+	await requirePermission("process", "manage");
 	const file = formData.get("file") as File;
 	if (!file || file.size === 0) return { error: "Alege un fișier" };
 	const xml = await file.text();

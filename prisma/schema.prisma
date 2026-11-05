@@ -21,7 +21,6 @@ model User {
   banExpires    DateTime?
   sessions      Session[]
   accounts      Account[]
-  membership    Membership?
   cases         Case[]
   comments      CaseComment[]
   ispResponses  IspResponse[]
@@ -81,25 +80,6 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
-}
-
-model Group {
-  id        String       @id @default(cuid())
-  key       String       @unique
-  name      String
-  createdAt DateTime     @default(now())
-  members   Membership[]
-
-  @@map("groups")
-}
-
-model Membership {
-  userId   String @id
-  groupKey String
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  group    Group  @relation(fields: [groupKey], references: [key])
-
-  @@map("memberships")
 }
 
 model ProcessVersion {

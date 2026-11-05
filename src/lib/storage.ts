@@ -145,12 +145,7 @@ export async function storeFile(
 		};
 	}
 	return {
-		data: {
-			key,
-			name: cleanFileName(file.name),
-			size: file.size,
-			contentType,
-		},
+		data: { key, name: cleanFileName(file.name), size: file.size, contentType },
 	};
 }
 

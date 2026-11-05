@@ -19,7 +19,6 @@ type Props = {
 	rejection: { stage: string; text: string | null; createdAt: Date } | null;
 };
 
-
 export default function CaseStatusPanel({
 	stage,
 	isInitiator,

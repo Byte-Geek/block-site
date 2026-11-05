@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireGroup } from "@/lib/auth/require-group";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { parseDomains } from "@/lib/cases/domains";
 import { prisma } from "@/lib/prisma";
 import { deleteFiles, storeFile } from "@/lib/storage";
@@ -13,7 +13,7 @@ export async function createDraft(
 	_prev: State,
 	formData: FormData,
 ): Promise<State> {
-	const user = await requireGroup("initiator");
+	const user = await requirePermission("case", "create");
 
 	const file = formData.get("file") as File;
 	const parsed = await parseDomains(file);
@@ -69,7 +69,7 @@ export async function createEmptyDraft(
 	_prev: State,
 	_formData: FormData,
 ): Promise<State> {
-	const user = await requireGroup("initiator");
+	const user = await requirePermission("case", "create");
 
 	const created = await prisma.case.create({
 		data: {

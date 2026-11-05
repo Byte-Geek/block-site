@@ -5,12 +5,11 @@ import CaseReport from "@/components/cases/case-report";
 import CaseTabs, { type CaseTab } from "@/components/cases/case-tabs";
 import DomainsTable from "@/components/cases/domains-table";
 import IspStatusCard from "@/components/cases/isp-status-card";
-import Timeline from "@/components/cases/timeline";
 import FlashToast from "@/components/common/flash-toast";
 import { StageBadge } from "@/components/common/status-badge";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { can } from "@/lib/auth/permissions";
 import { requireCaseAccess } from "@/lib/cases/access";
 import { getDomainsPage } from "@/lib/cases/domain-page";
 import { domainProblem } from "@/lib/cases/domains";
@@ -25,6 +24,7 @@ import CaseStatusPanel from "./_components/case-status-panel";
 import CaseTasksCard from "./_components/case-tasks-card";
 import EditableDomainsTable from "./_components/editable-domains-table";
 import FilesTab from "./_components/files-tab";
+import HistoryTab from "./_components/history-tab";
 import NotesTab from "./_components/notes-tab";
 import OpenTaskBanner from "./_components/open-task-banner";
 import {
@@ -48,7 +48,13 @@ type Props = {
 	}>;
 };
 
-const TABS: CaseTab[] = ["raport", "descriere", "comentarii", "fisiere"];
+const TABS: CaseTab[] = [
+	"raport",
+	"descriere",
+	"istoric",
+	"comentarii",
+	"fisiere",
+];
 
 export default async function CasePage({ params, searchParams }: Props) {
 	const number = parseCaseNumber((await params).number);
@@ -77,12 +83,10 @@ export default async function CasePage({ params, searchParams }: Props) {
 	});
 	if (!c) notFound();
 
-	const isInitiator = access.group === "initiator";
-	const isAdmin = user.role === "admin";
+	const isInitiator = can(user.role, "case", "create");
 	const isEditable =
 		isInitiator && (c.stage === "draft" || c.stage === "initiator");
-	const showTasks =
-		isAdmin || access.group === "asp" || access.group === "anr";
+	const showTasks = can(user.role, "case", "readAll");
 	const caseTasks = showTasks ? await listCaseTasks(c.processInstanceId) : [];
 
 	const notes =
@@ -132,7 +136,6 @@ export default async function CasePage({ params, searchParams }: Props) {
 			? await getCaseReport(c.id, ispItems, c._count.domains)
 			: null;
 
-	
 	const tab: CaseTab =
 		requestedTab === "raport" && !report
 			? "descriere"
@@ -184,17 +187,6 @@ export default async function CasePage({ params, searchParams }: Props) {
 			.join(" ") || undefined;
 
 	const basePath = `/cases/${c.number}`;
-	const isDraft = isInitiator && c.stage === "draft";
-	const historyCard = !isDraft && (
-		<Card>
-			<CardHeader>
-				<CardTitle>Istoric</CardTitle>
-			</CardHeader>
-			<CardContent>
-				<Timeline events={events} branches={branches} />
-			</CardContent>
-		</Card>
-	);
 
 	return (
 		<PageShell>
@@ -239,6 +231,10 @@ export default async function CasePage({ params, searchParams }: Props) {
 					ispCount={ispItems.length}
 					failures={report.failures}
 				/>
+			)}
+
+			{tab === "istoric" && (
+				<HistoryTab events={events} branches={branches} />
 			)}
 
 			{tab === "comentarii" && (
@@ -306,7 +302,11 @@ export default async function CasePage({ params, searchParams }: Props) {
 							{taskRows.length > 0 && (
 								<CaseTasksCard
 									rows={taskRows}
-									canRelease={isAdmin}
+									canRelease={can(
+										user.role,
+										"task",
+										"release",
+									)}
 								/>
 							)}
 
@@ -316,12 +316,8 @@ export default async function CasePage({ params, searchParams }: Props) {
 									closed={c.stage === "closed"}
 								/>
 							)}
-
-							{!branches.length && historyCard}
 						</div>
 					</div>
-
-					{branches.length > 0 && historyCard}
 				</>
 			)}
 		</PageShell>

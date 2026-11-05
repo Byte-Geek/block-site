@@ -84,7 +84,7 @@ export default function FilesTab({ number, canWrite, files, nameOf }: Props) {
 										<TableCell className="whitespace-normal">
 											<p className="font-medium break-all">{f.name}</p>
 											{f.note && (
-												<p className="text-xs wrap-break-word text-muted-foreground">
+												<p className="text-xs break-words text-muted-foreground">
 													{f.note}
 												</p>
 											)}
@@ -96,7 +96,7 @@ export default function FilesTab({ number, canWrite, files, nameOf }: Props) {
 											{formatSize(f.size)}
 										</TableCell>
 										<TableCell className="whitespace-normal">
-											<p className="wrap-break-word">{nameOf(f.userId)}</p>
+											<p className="break-words">{nameOf(f.userId)}</p>
 											<p className="text-xs text-muted-foreground">
 												{formatDateTime(f.createdAt)}
 											</p>

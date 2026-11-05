@@ -15,6 +15,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { requireUser } from "@/lib/auth/current-user";
+import { can } from "@/lib/auth/permissions";
 import { formatDateTime } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { type FlowTask, listTasksForUser } from "@/lib/workflow/tasks";
@@ -24,8 +25,8 @@ type Props = { searchParams: Promise<{ ok?: string; tab?: string }> };
 export default async function TasksPage({ searchParams }: Props) {
 	const { ok, tab } = await searchParams;
 	const user = await requireUser();
-	if (!user.group) redirect("/");
-	if (user.group === "initiator") redirect("/cases");
+	if (!can(user.role, "task", "claim"))
+		redirect(can(user.role, "case", "create") ? "/cases" : "/");
 
 	const { mine, available } = await listTasksForUser(user);
 
@@ -71,7 +72,7 @@ export default async function TasksPage({ searchParams }: Props) {
 	const emptyText =
 		active === "mine"
 			? "Nu ai nicio sarcină preluată. Alege una din fila „Disponibile”."
-			: user.group === "isp"
+			: can(user.role, "task", "execute")
 				? "Sarcinile noi apar aici când un caz aprobat ajunge la ISP-uri."
 				: "Nu sunt sarcini libere. Cazurile noi apar aici când ajung la grupul tău.";
 

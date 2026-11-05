@@ -7,13 +7,13 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { formatDateTime } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import UploadProcessForm from "./_components/upload-process-form";
 
 export default async function ProcessPage() {
-	await requireAdmin();
+	await requirePermission("process", "manage");
 	const versions = await prisma.processVersion.findMany({
 		orderBy: { createdAt: "desc" },
 	});

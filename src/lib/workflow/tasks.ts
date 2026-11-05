@@ -1,7 +1,8 @@
+import { can } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
 import { flowable } from "@/lib/workflow/flowable";
 
-type User = { id: string; role?: string | null; group: string | null };
+type User = { id: string; role?: string | null };
 
 export type FlowTask = {
 	id: string;
@@ -21,13 +22,15 @@ async function queryTasks(query: string) {
 }
 
 function candidateQuery(user: User) {
-	return user.group === "isp"
+	return can(user.role, "task", "execute")
 		? `candidateUser=${enc(user.id)}`
-		: `candidateGroup=${enc(user.group ?? "")}`;
+		: `candidateGroup=${enc(user.role ?? "")}`;
 }
 
+const canWorkTasks = (user: User) => can(user.role, "task", "claim");
+
 export async function listTasksForUser(user: User) {
-	if (!user.group || user.group === "initiator")
+	if (!canWorkTasks(user))
 		return { mine: [] as FlowTask[], available: [] as FlowTask[] };
 
 	const [mine, candidates] = await Promise.all([
@@ -38,7 +41,7 @@ export async function listTasksForUser(user: User) {
 }
 
 export async function getTaskForUser(taskId: string, user: User) {
-	if (!user.group || user.group === "initiator") return null;
+	if (!canWorkTasks(user)) return null;
 
 	let [task] = await queryTasks(
 		`taskId=${enc(taskId)}&assignee=${enc(user.id)}`,
@@ -79,8 +82,7 @@ export async function findOpenTask(
 	user: User,
 	processInstanceId: string | null,
 ) {
-	if (!user.group || user.group === "initiator" || !processInstanceId)
-		return null;
+	if (!canWorkTasks(user) || !processInstanceId) return null;
 
 	try {
 		const base = `processInstanceId=${enc(processInstanceId)}`;

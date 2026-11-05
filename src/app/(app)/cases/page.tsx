@@ -17,6 +17,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { can } from "@/lib/auth/permissions";
 import { requireCaseAccess } from "@/lib/cases/access";
 import { stageLabels } from "@/lib/cases/constants";
 import { countByStage } from "@/lib/cases/stats";
@@ -45,7 +46,7 @@ type Props = {
 
 export default async function CasesPage({ searchParams }: Props) {
 	const { stage = "", q = "", page = "1", ok } = await searchParams;
-	const { access } = await requireCaseAccess();
+	const { user, access } = await requireCaseAccess();
 
 	const current = Math.max(1, Number(page) || 1);
 	const stageFilter = stageOrder.includes(stage) ? stage : "";
@@ -107,7 +108,7 @@ export default async function CasesPage({ searchParams }: Props) {
 	}));
 
 	const filtersActive = Boolean(stageFilter || query);
-	const isInitiator = access.group === "initiator";
+	const isInitiator = can(user.role, "case", "create");
 	const newCaseButton = isInitiator && (
 		<Button asChild size="sm" className="mt-2">
 			<Link href="/cases/new">

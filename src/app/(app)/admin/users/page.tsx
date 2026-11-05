@@ -12,29 +12,28 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { auth } from "@/lib/auth/auth";
-import { requireAdmin } from "@/lib/auth/require-admin";
-import { prisma } from "@/lib/prisma";
+import { isAdmin, processRoles, roleLabels } from "@/lib/auth/permissions";
+import { requirePermission } from "@/lib/auth/require-permission";
 import { CreateUserDialog, EditUserDialog } from "./_components/user-dialogs";
 import { deleteUser } from "./actions";
 
 export default async function UsersPage() {
-	await requireAdmin();
+	await requirePermission("user", "list");
 	const { users } = await auth.api.listUsers({
 		query: { limit: 100 },
 		headers: await headers(),
 	});
-	const groups = await prisma.group.findMany({
-		orderBy: { createdAt: "asc" },
-	});
-	const memberships = await prisma.membership.findMany();
-	const groupOptions = groups.map((g) => ({ key: g.key, name: g.name }));
+	const roleOptions = processRoles.map((key) => ({
+		key,
+		name: roleLabels[key],
+	}));
 
 	return (
 		<PageShell className="max-w-4xl">
 			<PageHeader
 				title="Utilizatori"
 				description={users.length === 1 ? "Un cont" : `${users.length} conturi`}
-				actions={<CreateUserDialog groups={groupOptions} />}
+				actions={<CreateUserDialog roles={roleOptions} />}
 			/>
 
 			<div className="overflow-hidden rounded-xl border bg-card">
@@ -42,15 +41,13 @@ export default async function UsersPage() {
 					<TableHeader>
 						<TableRow>
 							<TableHead>Utilizator</TableHead>
-							<TableHead>Grup</TableHead>
+							<TableHead>Rol</TableHead>
 							<TableHead className="w-24" />
 						</TableRow>
 					</TableHeader>
 					<TableBody>
 						{users.map((u) => {
-							const admin = u.role === "admin";
-							const m = memberships.find((x) => x.userId === u.id);
-							const group = groups.find((g) => g.key === m?.groupKey);
+							const admin = isAdmin(u.role);
 
 							return (
 								<TableRow key={u.id}>
@@ -70,7 +67,8 @@ export default async function UsersPage() {
 											<Badge>Administrator</Badge>
 										) : (
 											<Badge variant="secondary">
-												{group?.name ?? "Fără grup"}
+												{roleLabels[u.role as keyof typeof roleLabels] ??
+													roleLabels.user}
 											</Badge>
 										)}
 									</TableCell>
@@ -83,8 +81,8 @@ export default async function UsersPage() {
 														name: u.name,
 														email: u.email,
 													}}
-													groupKey={m?.groupKey ?? ""}
-													groups={groupOptions}
+													role={u.role ?? ""}
+													roles={roleOptions}
 												/>
 												<DeleteDialog
 													action={deleteUser}

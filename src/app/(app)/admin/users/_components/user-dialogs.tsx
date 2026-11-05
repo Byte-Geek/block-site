@@ -14,24 +14,24 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 
-type GroupOption = { key: string; name: string };
+type RoleOption = { key: string; name: string };
 
-function GroupSelect({
-	groups,
+function RoleSelect({
+	roles,
 	defaultValue,
 }: {
-	groups: GroupOption[];
+	roles: RoleOption[];
 	defaultValue?: string;
 }) {
 	return (
 		<div className="grid gap-2">
-			<Label htmlFor="groupKey">Grup</Label>
-			<Select name="groupKey" defaultValue={defaultValue || undefined}>
-				<SelectTrigger id="groupKey" className="w-full">
-					<SelectValue placeholder="Alege grupul" />
+			<Label htmlFor="role">Rol</Label>
+			<Select name="role" defaultValue={defaultValue || undefined}>
+				<SelectTrigger id="role" className="w-full">
+					<SelectValue placeholder="Alege rolul" />
 				</SelectTrigger>
 				<SelectContent>
-					{groups.map((g) => (
+					{roles.map((g) => (
 						<SelectItem key={g.key} value={g.key}>
 							{g.name}
 						</SelectItem>
@@ -42,7 +42,7 @@ function GroupSelect({
 	);
 }
 
-export function CreateUserDialog({ groups }: { groups: GroupOption[] }) {
+export function CreateUserDialog({ roles }: { roles: RoleOption[] }) {
 	return (
 		<FormDialog
 			trigger={
@@ -52,7 +52,7 @@ export function CreateUserDialog({ groups }: { groups: GroupOption[] }) {
 				</Button>
 			}
 			title="Utilizator nou"
-			description="Contul se creează și în Flowable, în grupul ales."
+			description="Contul se creează și în Flowable, în grupul rolului ales."
 			submitLabel="Creează"
 			action={createUser}
 		>
@@ -66,18 +66,18 @@ export function CreateUserDialog({ groups }: { groups: GroupOption[] }) {
 				required
 				hint="Minim 8 caractere"
 			/>
-			<GroupSelect groups={groups} />
+			<RoleSelect roles={roles} />
 		</FormDialog>
 	);
 }
 
 type EditProps = {
 	user: { id: string; name: string; email: string };
-	groupKey: string;
-	groups: GroupOption[];
+	role: string;
+	roles: RoleOption[];
 };
 
-export function EditUserDialog({ user, groupKey, groups }: EditProps) {
+export function EditUserDialog({ user, role, roles }: EditProps) {
 	return (
 		<FormDialog
 			trigger={
@@ -93,7 +93,7 @@ export function EditUserDialog({ user, groupKey, groups }: EditProps) {
 			<input type="hidden" name="userId" value={user.id} />
 			<input type="hidden" name="email" value={user.email} />
 			<Field label="Nume" name="name" defaultValue={user.name} required />
-			<GroupSelect groups={groups} defaultValue={groupKey} />
+			<RoleSelect roles={roles} defaultValue={role} />
 			<Field
 				label="Parolă nouă"
 				name="password"

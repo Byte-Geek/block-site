@@ -9,12 +9,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { requireGroup } from "@/lib/auth/require-group";
+import { requirePermission } from "@/lib/auth/require-permission";
 import EmptyDraftButton from "./_components/empty-draft-button";
 import UploadForm from "./_components/upload-form";
 
 export default async function NewCasePage() {
-	await requireGroup("initiator");
+	await requirePermission("case", "create");
 
 	return (
 		<PageShell className="max-w-4xl">

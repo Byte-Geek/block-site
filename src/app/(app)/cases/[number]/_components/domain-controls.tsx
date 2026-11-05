@@ -67,18 +67,12 @@ export function AddDomainRow({ number }: { number: number }) {
 							className="font-mono text-sm"
 							aria-invalid={showError}
 						/>
-						<Button
-							type="submit"
-							size="sm"
-							disabled={pending || !value.trim()}
-						>
+						<Button type="submit" size="sm" disabled={pending || !value.trim()}>
 							Adaugă
 						</Button>
 					</div>
 					{showError && (
-						<p className="text-xs text-destructive">
-							{state.error}
-						</p>
+						<p className="text-xs text-destructive">{state.error}</p>
 					)}
 				</form>
 			</TableCell>
@@ -148,9 +142,7 @@ export function DomainRow({ number, row }: { number: number; row: Row }) {
 							aria-invalid={showError}
 						/>
 						{showError && (
-							<p className="text-xs text-destructive">
-								{state.error}
-							</p>
+							<p className="text-xs text-destructive">{state.error}</p>
 						)}
 					</div>
 				) : (
@@ -164,15 +156,10 @@ export function DomainRow({ number, row }: { number: number; row: Row }) {
 							{row.value}
 						</span>
 						{row.problem && (
-							<span className="text-xs text-destructive">
-								{row.problem}
-							</span>
+							<span className="text-xs text-destructive">{row.problem}</span>
 						)}
 						{row.dups.map((d) => (
-							<span
-								key={d.number}
-								className="text-xs text-destructive"
-							>
+							<span key={d.number} className="text-xs text-destructive">
 								Există deja în cazul{" "}
 								{d.own ? (
 									<Link
@@ -182,9 +169,7 @@ export function DomainRow({ number, row }: { number: number; row: Row }) {
 										#{d.number}
 									</Link>
 								) : (
-									<span className="font-medium">
-										#{d.number}
-									</span>
+									<span className="font-medium">#{d.number}</span>
 								)}{" "}
 								({stageLabels[d.stage] ?? d.stage})
 							</span>

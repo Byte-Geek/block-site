@@ -6,17 +6,17 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { requireUser } from "@/lib/auth/current-user";
+import { can, isAdmin, type Role, roleLabels } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
 
 async function Shell({ children }: { children: ReactNode }) {
 	const user = await requireUser();
-	const isAdmin = user.role === "admin";
+	const admin = isAdmin(user.role);
 
-	const [unread, group, cookieStore] = await Promise.all([
+	const [unread, cookieStore] = await Promise.all([
 		prisma.notification.count({
 			where: { userId: user.id, readAt: null },
 		}),
-		user.group ? prisma.group.findUnique({ where: { key: user.group } }) : null,
 		cookies(),
 	]);
 	const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
@@ -25,15 +25,15 @@ async function Shell({ children }: { children: ReactNode }) {
 		<TooltipProvider delayDuration={0}>
 			<SidebarProvider defaultOpen={defaultOpen}>
 				<AppSidebar
-					isAdmin={isAdmin}
-					isInitiator={user.group === "initiator"}
+					isAdmin={admin}
+					isInitiator={can(user.role, "case", "create")}
 				/>
 				<SidebarInset>
 					<AppHeader
 						name={user.name}
 						email={user.email}
-						roleLabel={isAdmin ? "Administrator" : (group?.name ?? "Fără grup")}
-						unread={isAdmin ? null : unread}
+						roleLabel={roleLabels[user.role as Role] ?? roleLabels.user}
+						unread={admin ? null : unread}
 					/>
 					<div className="flex flex-1 flex-col">{children}</div>
 				</SidebarInset>

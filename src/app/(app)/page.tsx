@@ -5,13 +5,13 @@ import {
 	HandHelping,
 	ListChecks,
 	Users,
-	UsersRound,
 } from "lucide-react";
 import DomainSearch from "@/components/cases/domain-search";
 import RecentCases from "@/components/cases/recent-cases";
 import StatCard from "@/components/common/stat-card";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { requireUser } from "@/lib/auth/current-user";
+import { can, isAdmin } from "@/lib/auth/permissions";
 import { caseAccess } from "@/lib/cases/access";
 import { countByStage } from "@/lib/cases/stats";
 import { prisma } from "@/lib/prisma";
@@ -43,35 +43,35 @@ export default async function HomePage({
 		return (
 			<PageShell className="max-w-3xl">
 				<PageHeader
-					title="Contul nu are încă un grup"
-					description="Cere administratorului să te adauge într-un grup ca să poți lucra în platformă."
+					title="Contul nu are încă un rol"
+					description="Cere administratorului să îți dea un rol ca să poți lucra în platformă."
 				/>
 			</PageShell>
 		);
 	}
 
-	if (access.group === "initiator")
+	if (can(user.role, "case", "create"))
 		return <InitiatorDashboard user={user} d={d} />;
 
-	const isAdmin = user.role === "admin";
-	const [stages, recent, tasks, unread, users, groups] = await Promise.all([
+	const admin = isAdmin(user.role);
+	const role = user.role ?? "";
+	const [stages, recent, tasks, unread, users] = await Promise.all([
 		countByStage(access.where),
 		prisma.case.findMany({
 			where: access.where,
 			orderBy: { number: "desc" },
 			take: 5,
 		}),
-		isAdmin
+		admin
 			? null
 			: listTasksForUser(user).catch((e) => {
 					console.error("HOME TASKS:", e);
 					return null;
 				}),
-		isAdmin
+		admin
 			? null
 			: prisma.notification.count({ where: { userId: user.id, readAt: null } }),
-		isAdmin ? prisma.user.count() : null,
-		isAdmin ? prisma.group.count() : null,
+		admin ? prisma.user.count() : null,
 	]);
 
 	const closed = stages.of("closed");
@@ -79,7 +79,7 @@ export default async function HomePage({
 	const mineCount = tasks ? tasks.mine.length : null;
 	const availableCount = tasks ? tasks.available.length : null;
 
-	const cards = isAdmin
+	const cards = admin
 		? [
 				{
 					href: "/cases",
@@ -99,12 +99,6 @@ export default async function HomePage({
 					value: users,
 					icon: Users,
 				},
-				{
-					href: "/admin/groups",
-					label: "Grupuri",
-					value: groups,
-					icon: UsersRound,
-				},
 			]
 		: [
 				{
@@ -120,7 +114,7 @@ export default async function HomePage({
 					label: "Disponibile",
 					value: availableCount,
 					icon: HandHelping,
-					hint: access.group ? availableHint[access.group] : undefined,
+					hint: availableHint[role],
 				},
 				{
 					href: "/cases",
@@ -141,11 +135,9 @@ export default async function HomePage({
 			<PageHeader
 				title={`Bună, ${user.name.split(" ")[0]}`}
 				description={
-					isAdmin
-						? "Administrează utilizatorii, grupurile și schema procesului."
-						: access.group
-							? roleText[access.group]
-							: undefined
+					admin
+						? "Administrează utilizatorii și schema procesului."
+						: roleText[role]
 				}
 			/>
 

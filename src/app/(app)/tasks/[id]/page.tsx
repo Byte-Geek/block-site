@@ -2,6 +2,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import DomainsTable from "@/components/cases/domains-table";
+import NotesPreview from "@/components/cases/notes-preview";
 import { IspStatusBadge, StageBadge } from "@/components/common/status-badge";
 import { PageHeader, PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
@@ -14,10 +15,12 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { requireUser } from "@/lib/auth/current-user";
+import { can } from "@/lib/auth/permissions";
 import { getDomainsPage } from "@/lib/cases/domain-page";
 import { formatDateTime } from "@/lib/format";
 import { pageSizeFrom } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
+import { stageByTaskKey } from "@/lib/workflow/stages";
 import { getTaskForUser } from "@/lib/workflow/tasks";
 import ClaimBar from "./_components/claim-bar";
 import DecisionForm from "./_components/decision-form";
@@ -39,11 +42,12 @@ export default async function TaskPage({ params, searchParams }: Props) {
 	const { page = "1", q = "", size: sizeParam } = await searchParams;
 
 	const user = await requireUser();
-	if (!user.group) redirect("/");
+	if (!can(user.role, "task", "claim")) redirect("/");
 
 	const found = await getTaskForUser(id, user);
 	if (!found) notFound();
 	const { task, c, mine } = found;
+	const canExecute = can(user.role, "task", "execute");
 
 	const domainsPage = await getDomainsPage(c.id, {
 		q,
@@ -51,22 +55,31 @@ export default async function TaskPage({ params, searchParams }: Props) {
 		size: pageSizeFrom(sizeParam),
 	});
 
-	const last =
-		user.group === "isp"
-			? await prisma.ispResponse.findFirst({
-					where: { caseId: c.id, userId: user.id },
-					orderBy: { createdAt: "desc" },
-				})
-			: null;
+	const last = canExecute
+		? await prisma.ispResponse.findFirst({
+				where: { caseId: c.id, userId: user.id },
+				orderBy: { createdAt: "desc" },
+			})
+		: null;
 
 	const progress =
-		mine && user.group === "isp"
+		mine && canExecute
 			? await getIspProgress(
 					c.id,
 					user.id,
 					domainsPage.domains.map((d) => d.id),
 				)
 			: null;
+
+	const notes = await prisma.caseNote.findMany({
+		where: { caseId: c.id },
+		orderBy: { createdAt: "desc" },
+	});
+	const authors = await prisma.user.findMany({
+		where: { id: { in: [...new Set(notes.map((n) => n.userId))] } },
+		select: { id: true, name: true },
+	});
+	const names = new Map<string, string>(authors.map((u) => [u.id, u.name]));
 
 	return (
 		<PageShell>
@@ -127,11 +140,17 @@ export default async function TaskPage({ params, searchParams }: Props) {
 				</div>
 
 				<div className="order-first flex flex-col gap-4 lg:sticky lg:top-6 lg:order-last">
-					{["asp", "anr", "isp"].includes(user.group) && (
+					<NotesPreview
+						number={c.number}
+						notes={notes}
+						nameOf={(id) => names.get(id) ?? id}
+					/>
+
+					{can(user.role, "task", "claim") && (
 						<ClaimBar taskId={task.id} mine={mine} />
 					)}
 
-					{mine && ["asp", "anr"].includes(user.group) && (
+					{mine && can(user.role, "task", "decide") && (
 						<Card>
 							<CardHeader>
 								<CardTitle>Decizie</CardTitle>
@@ -143,7 +162,9 @@ export default async function TaskPage({ params, searchParams }: Props) {
 							<CardContent>
 								<DecisionForm
 									taskId={task.id}
-									stage={user.group as "asp" | "anr"}
+									stage={
+										stageByTaskKey[task.taskDefinitionKey] as "asp" | "anr"
+									}
 								/>
 							</CardContent>
 						</Card>

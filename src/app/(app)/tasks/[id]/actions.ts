@@ -4,10 +4,13 @@ import { revalidatePath } from "next/cache";
 
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/current-user";
+import { can } from "@/lib/auth/permissions";
 import { finalIspStatuses, ispStatuses } from "@/lib/cases/constants";
+import { decisionFlow } from "@/lib/cases/flow";
 import { notify, notifyIspTasks } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { flowable } from "@/lib/workflow/flowable";
+import { stageByTaskKey } from "@/lib/workflow/stages";
 import { type FlowTask, getTaskForUser } from "@/lib/workflow/tasks";
 
 export async function decide(
@@ -15,9 +18,8 @@ export async function decide(
 	formData: FormData,
 ): Promise<{ error?: string }> {
 	const user = await requireUser();
-	if (!user.group || !["asp", "anr"].includes(user.group))
+	if (!can(user.role, "task", "decide"))
 		return { error: "Nu ai dreptul să finalizezi această sarcină" };
-	const stage = user.group;
 
 	const taskId = String(formData.get("taskId"));
 	const decision = String(formData.get("decision"));
@@ -33,14 +35,9 @@ export async function decide(
 	if (!found.mine) return { error: "Preia sarcina înainte să o finalizezi" };
 	const { c } = found;
 
-	const nextStage =
-		stage === "asp"
-			? decision === "da"
-				? "anr"
-				: "initiator"
-			: decision === "da"
-				? "isp"
-				: "asp";
+	const stage = stageByTaskKey[found.task.taskDefinitionKey];
+	const step = decisionFlow[stage]?.[decision];
+	if (!step) return { error: "Această sarcină nu cere o decizie" };
 
 	const [comment] = await prisma.$transaction([
 		prisma.caseComment.create({
@@ -52,7 +49,7 @@ export async function decide(
 				text: text || null,
 			},
 		}),
-		prisma.case.update({ where: { id: c.id }, data: { stage: nextStage } }),
+		prisma.case.update({ where: { id: c.id }, data: { stage: step.next } }),
 	]);
 
 	try {
@@ -71,31 +68,17 @@ export async function decide(
 		return { error: "Decizia nu a putut fi trimisă" };
 	}
 
-	if (stage === "anr" && decision === "da") {
+	if (step.next === "isp") {
 		await notifyIspTasks(c);
 		redirect("/tasks?ok=decision");
 	}
 
-	const message =
-		stage === "asp"
-			? decision === "da"
-				? "așteaptă validarea ANRCETI"
-				: "a fost respins de ASP"
-			: decision === "da"
-				? "așteaptă blocarea de către ISP"
-				: "a fost respins de ANRCETI";
-	const to =
-		stage === "asp"
-			? decision === "da"
-				? { groups: ["anr"] }
-				: { users: [c.createdById] }
-			: decision === "da"
-				? { groups: ["isp"] }
-				: { groups: ["asp"] };
 	await notify(
 		c.id,
-		`Caz #${c.number} ${message}${text ? `: ${text}` : ""}`,
-		to,
+		`Caz #${c.number} ${step.message}${text ? `: ${text}` : ""}`,
+		step.notify === "creator"
+			? { users: [c.createdById] }
+			: { roles: step.notify.roles },
 	);
 
 	redirect("/tasks?ok=decision");
@@ -147,7 +130,7 @@ async function saveIspStatus(
 		await notify(
 			c.id,
 			`Caz #${c.number} s-a închis: au răspuns toți ISP-urile`,
-			{ groups: ["asp", "anr"], users: [c.createdById] },
+			{ roles: ["asp", "anr"], users: [c.createdById] },
 		);
 	}
 	redirect("/tasks?ok=isp");
@@ -158,7 +141,7 @@ export async function setIspStatus(
 	formData: FormData,
 ): Promise<{ error?: string; ok?: string }> {
 	const user = await requireUser();
-	if (user.group !== "isp")
+	if (!can(user.role, "task", "execute"))
 		return { error: "Nu ai dreptul să finalizezi această sarcină" };
 
 	const taskId = String(formData.get("taskId"));
@@ -181,7 +164,7 @@ export async function setIspStatus(
 
 async function myIspTask(taskId: string) {
 	const user = await requireUser();
-	if (user.group !== "isp") return null;
+	if (!can(user.role, "task", "execute")) return null;
 	const found = await getTaskForUser(taskId, user);
 	if (!found?.mine) return null;
 	return { user, ...found };
@@ -312,18 +295,12 @@ export async function finishIspTask(
 
 type ActionState = { error?: string; ok?: string };
 
-const stageByTaskKey: Record<string, string> = {
-	aspTask: "asp",
-	anrTask: "anr",
-	ispTask: "isp",
-};
-
 export async function claimTask(
 	_prev: ActionState,
 	formData: FormData,
 ): Promise<ActionState> {
 	const user = await requireUser();
-	if (!user.group || !["asp", "anr", "isp"].includes(user.group))
+	if (!can(user.role, "task", "claim"))
 		return { error: "Nu ai dreptul să preiei această sarcină" };
 
 	const taskId = String(formData.get("taskId"));
@@ -350,7 +327,7 @@ export async function claimTask(
 			data: {
 				caseId: found.c.id,
 				userId: user.id,
-				stage: user.group,
+				stage: stageByTaskKey[found.task.taskDefinitionKey],
 				decision: "preluat",
 			},
 		})
@@ -379,8 +356,7 @@ export async function releaseTask(
 	}
 
 	if (!task.assignee) return { error: "Sarcina nu este preluată" };
-	const isAdmin = user.role === "admin";
-	if (task.assignee !== user.id && !isAdmin)
+	if (task.assignee !== user.id && !can(user.role, "task", "release"))
 		return { error: "Doar cel care a preluat sarcina o poate elibera" };
 
 	const stage = stageByTaskKey[task.taskDefinitionKey];
